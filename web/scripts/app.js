@@ -51,10 +51,7 @@ export class ComfyApp {
 		await this.registerNodesFromDefs(defs);
 	}
 
-	/**
-	 * 注册 Node 到图表
-	 * @param {*} defs 
-	 */
+
 	async registerNodesFromDefs(defs) {
 		// Generate list of known widgets
 		const widgets = Object.assign(

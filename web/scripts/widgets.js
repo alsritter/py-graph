@@ -13,6 +13,15 @@ function getNumberDefaults(inputData, defaultStep) {
 const MultilineSymbol = Symbol();
 const MultilineResizeSymbol = Symbol();
 
+/**
+ * 在 LiteGraph 节点上添加多行小部件，自动计算布局和尺寸。
+ * @param {Object} node - 要添加小部件的 LiteGraph 节点对象。
+ * @param {String} name - 小部件的名称。
+ * @param {Object} opts - 小部件的选项。
+ * @param {String} opts.defaultVal - 默认值
+ * @param {String} opts.placeholder - 占位符
+ * @param {Object} app - 应用程序的上下文。
+ */
 function addMultilineWidget(node, name, opts, app) {
 	const MIN_SIZE = 50;
 
@@ -54,7 +63,7 @@ function addMultilineWidget(node, name, opts, app) {
 			w.y = y;
 			if (w.type === "customtext") {
 				y += freeSpace;
-				w.computedHeight = freeSpace - multi.length*4;
+				w.computedHeight = freeSpace - multi.length * 4;
 			} else if (w.computeSize) {
 				y += w.computeSize()[1] + 4;
 			} else {
@@ -97,8 +106,8 @@ function addMultilineWidget(node, name, opts, app) {
 				width: `${widgetWidth - (margin * 2)}px`,
 				height: `${this.parent.inputHeight - (margin * 2)}px`,
 				position: "absolute",
-				background: (!node.color)?'':node.color,
-				color: (!node.color)?'':'white',
+				background: (!node.color) ? '' : node.color,
+				color: (!node.color) ? '' : 'white',
 				zIndex: app.graph._nodes.indexOf(node),
 			});
 			this.inputEl.hidden = !visible;
@@ -177,15 +186,17 @@ function isSlider(display, app) {
 	if (app.ui.settings.getSettingValue("Comfy.DisableSliders")) {
 		return "number"
 	}
-
-	return (display==="slider") ? "slider" : "number"
+	return (display === "slider") ? "slider" : "number"
 }
 
+/**
+ * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
+ */
 export const ComfyWidgets = {
 	FLOAT(node, inputName, inputData, app) {
 		let widgetType = isSlider(inputData[1]["display"], app);
 		const { val, config } = getNumberDefaults(inputData, 0.5);
-		return { widget: node.addWidget(widgetType, inputName, val, () => {}, config) };
+		return { widget: node.addWidget(widgetType, inputName, val, () => { }, config) };
 	},
 	INT(node, inputName, inputData, app) {
 		let widgetType = isSlider(inputData[1]["display"], app);
@@ -211,9 +222,9 @@ export const ComfyWidgets = {
 				"toggle",
 				inputName,
 				defaultVal,
-				() => {},
-				{"on": inputData[1].label_on, "off": inputData[1].label_off}
-				)
+				() => { },
+				{ "on": inputData[1].label_on, "off": inputData[1].label_off }
+			)
 		};
 	},
 	STRING(node, inputName, inputData, app) {
@@ -224,10 +235,10 @@ export const ComfyWidgets = {
 		if (multiline) {
 			res = addMultilineWidget(node, inputName, { defaultVal, ...inputData[1] }, app);
 		} else {
-			res = { widget: node.addWidget("text", inputName, defaultVal, () => {}, {}) };
+			res = { widget: node.addWidget("text", inputName, defaultVal, () => { }, {}) };
 		}
 
-		if(inputData[1].dynamicPrompts != undefined)
+		if (inputData[1].dynamicPrompts != undefined)
 			res.widget.dynamicPrompts = inputData[1].dynamicPrompts;
 
 		return res;
@@ -238,6 +249,6 @@ export const ComfyWidgets = {
 		if (inputData[1] && inputData[1].default) {
 			defaultValue = inputData[1].default;
 		}
-		return { widget: node.addWidget("combo", inputName, defaultValue, () => {}, { values: type }) };
+		return { widget: node.addWidget("combo", inputName, defaultValue, () => { }, { values: type }) };
 	},
 };
