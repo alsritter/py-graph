@@ -1,7 +1,12 @@
 import { api } from "./api.js";
 import { ComfyWidgets } from "./widgets.js";
+import { ComfyUI, $el } from "./ui.js";
 
 export class ComfyApp {
+	constructor() {
+		this.ui = new ComfyUI(this);
+	}
+
 	/**
 	 * Set up the app on the page
 	 */
