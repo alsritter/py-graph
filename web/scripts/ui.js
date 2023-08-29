@@ -572,6 +572,21 @@ export class ComfyUI {
 				$el("span.drag-handle"),
 				$el("button.comfy-settings-btn", {textContent: "⚙️", onclick: () => this.settings.show()}),
 			]),
+      $el("div.comfy-menu-content", [
+        // 运行按钮
+        $el("button.comfy-menu-btn", {
+          textContent: "Run",
+          // 给个合适大小的样式
+          style: {
+            width: "100%",
+            height: "1.3em",
+          },
+          onclick: async () => {
+            const val = await this.app.graphToPrompt();
+            console.log(val);
+          },
+        }),
+      ]),
       $el("div", {}, [
         $el("label", { innerHTML: "Extra options" }, [
           $el("input", {

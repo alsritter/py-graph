@@ -121,6 +121,110 @@ export class ComfyApp {
 			node.category = nodeData.category;
 		}
 	}
+
+	/**
+ * 将当前图形工作流转换为适合发送至 API 的格式。
+ * @returns {Object} 包含序列化后的工作流和节点连接的对象。
+ */
+	async graphToPrompt() {
+		// 序列化图形工作流
+		const workflow = this.graph.serialize();
+		const output = {};
+
+		// 按执行顺序处理节点
+		for (const node of this.graph.computeExecutionOrder(false)) {
+			const n = workflow.nodes.find((n) => n.id === node.id);
+
+			if (node.isVirtualNode) {
+				// 不序列化仅在前端使用的节点，但允许它们进行更改
+				if (node.applyToGraph) {
+					node.applyToGraph(workflow);
+				}
+				continue;
+			}
+
+			if (node.mode === 2 || node.mode === 4) {
+				// 不序列化已静音的节点
+				continue;
+			}
+
+			const inputs = {};
+			const widgets = node.widgets;
+
+			// 存储所有小部件的值
+			if (widgets) {
+				for (const i in widgets) {
+					const widget = widgets[i];
+					if (!widget.options || widget.options.serialize !== false) {
+						inputs[widget.name] = widget.serializeValue ? await widget.serializeValue(n, i) : widget.value;
+					}
+				}
+			}
+
+			// 存储所有节点连接
+			for (let i in node.inputs) {
+				let parent = node.getInputNode(i);
+				if (parent) {
+					let link = node.getInputLink(i);
+					while (parent.mode === 4 || parent.isVirtualNode) {
+						let found = false;
+						if (parent.isVirtualNode) {
+							link = parent.getInputLink(link.origin_slot);
+							if (link) {
+								parent = parent.getInputNode(link.target_slot);
+								if (parent) {
+									found = true;
+								}
+							}
+						} else if (link && parent.mode === 4) {
+							let all_inputs = [link.origin_slot];
+							if (parent.inputs) {
+								all_inputs = all_inputs.concat(Object.keys(parent.inputs))
+								for (let parent_input in all_inputs) {
+									parent_input = all_inputs[parent_input];
+									if (parent.inputs[parent_input].type === node.inputs[i].type) {
+										link = parent.getInputLink(parent_input);
+										if (link) {
+											parent = parent.getInputNode(parent_input);
+										}
+										found = true;
+										break;
+									}
+								}
+							}
+						}
+
+						if (!found) {
+							break;
+						}
+					}
+
+					if (link) {
+						inputs[node.inputs[i].name] = [String(link.origin_id), parseInt(link.origin_slot)];
+					}
+				}
+			}
+
+			output[String(node.id)] = {
+				inputs,
+				class_type: node.comfyClass,
+			};
+		}
+
+		// 移除与已删除节点连接的输入
+		for (const o in output) {
+			for (const i in output[o].inputs) {
+				if (Array.isArray(output[o].inputs[i])
+					&& output[o].inputs[i].length === 2
+					&& !output[output[o].inputs[i][0]]) {
+					delete output[o].inputs[i];
+				}
+			}
+		}
+
+		return { workflow, output };
+	}
+
 }
 
 export const app = new ComfyApp();

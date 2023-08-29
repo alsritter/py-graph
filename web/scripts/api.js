@@ -1,3 +1,5 @@
+import { AddNode, SubtractNode, MultiplyNode, DivideNode } from "./api_mock.js";
+
 class ComfyApi extends EventTarget {
 	#registered = new Set();
 
@@ -27,43 +29,14 @@ class ComfyApi extends EventTarget {
 	async getNodeDefs() {
 		// const resp = await this.fetchApi("/object_info", { cache: "no-store" });
 		// return await resp.json();
-		// Mock
+
+		// Mock data
 		return {
-			NodeClass1: {
-				input: {
-					required: {
-						testArgs1: ["type1", {}],
-						testArgs2: ["type2", {}],
-					},
-					optional: {
-						input3: ["type3", {}],
-					},
-				},
-				output: ["type1", "type3"],
-				output_name: ["output_name1", "output_name2"],
-				output_is_list: [true, false],
-				name: "NodeClass1",
-				display_name: "Display Name for NodeClass1",
-				category: "sd",
-			},
-			NodeClass2: {
-				input: {
-					required: {
-						testArgs1: ["type1", {}],
-						testArgs3: ["type3", {}],
-					},
-					optional: {
-						input2: ["type2", {}],
-					},
-				},
-				output: ["type1"],
-				output_name: ["output_name1"],
-				output_is_list: [false],
-				name: "NodeClass2",
-				display_name: "Display Name for NodeClass2",
-				category: "sd",
-			},
-		};
+			AddNode,
+			SubtractNode,
+			MultiplyNode,
+			DivideNode,
+		}
 	}
 }
 
