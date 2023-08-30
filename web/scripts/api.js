@@ -1,4 +1,4 @@
-import { AddNode, SubtractNode, MultiplyNode, DivideNode } from "./api_mock.js";
+import { AddNode, SubtractNode, MultiplyNode, DivideNode, TextInportNode, ValueInportNode } from "./api_mock.js";
 
 class ComfyApi extends EventTarget {
 	#registered = new Set();
@@ -36,6 +36,8 @@ class ComfyApi extends EventTarget {
 			SubtractNode,
 			MultiplyNode,
 			DivideNode,
+			TextInportNode,
+			ValueInportNode
 		}
 	}
 }

@@ -5,11 +5,11 @@ export const AddNode = {
 	category: "Math",
 	input: {
 		required: {
-			operand1: ["number", {}],
-			operand2: ["number", {}],
+			operand1: ["FLOAT", {}],
+			operand2: ["FLOAT", {}],
 		},
 	},
-	output: ["number"],
+	output: ["FLOAT"],
 	output_name: ["Sum"], // 输出的名称，与 output 数量对应
 	output_is_list: [false], // 是否为列表
 	color: "#ff9800",
@@ -23,11 +23,11 @@ export const SubtractNode = {
 	category: "Math",
 	input: {
 		required: {
-			minuend: ["number", {}],
-			subtrahend: ["number", {}],
+			minuend: ["FLOAT", {}],
+			subtrahend: ["FLOAT", {}],
 		},
 	},
-	output: ["number"],
+	output: ["FLOAT"],
 	output_name: ["Difference"],
 	output_is_list: [false],
 };
@@ -39,11 +39,11 @@ export const MultiplyNode = {
 	category: "Math",
 	input: {
 		required: {
-			factor1: ["number", {}],
-			factor2: ["number", {}],
+			factor1: ["FLOAT", {}],
+			factor2: ["FLOAT", {}],
 		},
 	},
-	output: ["number"],
+	output: ["FLOAT"],
 	output_name: ["Product"],
 	output_is_list: [false],
 };
@@ -55,11 +55,41 @@ export const DivideNode = {
 	category: "Math",
 	input: {
 		required: {
-			dividend: ["number", {}],
-			divisor: ["number", {}],
+			dividend: ["FLOAT", {}],
+			divisor: ["FLOAT", {}],
 		},
 	},
-	output: ["number"],
+	output: ["FLOAT"],
 	output_name: ["Quotient"],
+	output_is_list: [false],
+};
+
+export const TextInportNode = {
+	name: "TextInportNode",
+	display_name: "Text Inport",
+	category: "Inport",
+	input: {
+		required: {
+			text: ["STRING", {
+				"multiline": true,
+			}],
+		},
+	},
+	output: ["STRING"],
+	output_name: ["Text"],
+	output_is_list: [false],
+};
+
+export const ValueInportNode = {
+	name: "ValueInportNode",
+	display_name: "Value Inport",
+	category: "Inport",
+	input: {
+		required: {
+			value: ["FLOAT", {}],
+		},
+	},
+	output: ["FLOAT"],
+	output_name: ["Value"],
 	output_is_list: [false],
 };
