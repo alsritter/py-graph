@@ -38,6 +38,26 @@ class ComfyApi extends EventTarget {
 		return await resp.json();
 	}
 
+	/**
+	 * Gets a list of available workflows
+	 */
+	async runGraph({ output, workflow }) {
+		const resp = await this.fetchApi("/run_graph", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ output, workflow }),
+		});
+
+		if (resp.status !== 200) {
+			throw {
+				response: await resp.json(),
+			};
+		}
+
+		return await resp.json();
+	}
 }
 
 export const api = new ComfyApi();

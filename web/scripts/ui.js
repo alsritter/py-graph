@@ -582,7 +582,7 @@ export class ComfyUI {
             height: "1.3em",
           },
           onclick: async () => {
-            const val = await this.app.graphToPrompt();
+            const val = await this.app.run();
             console.log(val);
           },
         }),

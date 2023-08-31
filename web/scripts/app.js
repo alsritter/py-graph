@@ -193,6 +193,52 @@ export class ComfyApp {
 		this.extensions.push(extension);
 	}
 
+	#formatPromptError(error) {
+		if (error == null) {
+			return "(unknown error)"
+		}
+		else if (typeof error === "string") {
+			return error;
+		}
+		else if (error.stack && error.message) {
+			return error.toString()
+		}
+		else if (error.response) {
+			let message = error.response.error.message;
+			if (error.response.error.details)
+				message += ": " + error.response.error.details;
+			for (const [nodeID, nodeError] of Object.entries(error.response.node_errors)) {
+				message += "\n" + nodeError.class_type + ":"
+				for (const errorReason of nodeError.errors) {
+					message += "\n    - " + errorReason.message + ": " + errorReason.details
+				}
+			}
+			return message
+		}
+		return "(unknown error)"
+	}
+
+	/**
+	 * 执行当前图形工作流。
+	 */
+	async run() {
+		const p = await this.graphToPrompt();
+		try {
+			const res = await api.runGraph(p);
+			this.lastNodeErrors = res.node_errors;
+			if (this.lastNodeErrors.length > 0) {
+				this.canvas.draw(true, true);
+			}
+		} catch (error) {
+			const formattedError = this.#formatPromptError(error)
+			this.ui.dialog.show(formattedError);
+			if (error.response) {
+				this.lastNodeErrors = error.response.node_errors;
+				this.canvas.draw(true, true);
+			}
+		}
+	}
+
 	/**
 	 * 将当前图形工作流转换为适合发送至 API 的格式。
 	 * @returns {Object} 包含序列化后的工作流和节点连接的对象。

@@ -4,6 +4,7 @@ import mimetypes # 映射文件名到 MIME 类型
 import nodes
 import glob
 import os
+import execution
 
 @web.middleware
 async def cache_control(request: web.Request, handler):
@@ -57,6 +58,16 @@ class PyGraphServer:
             for x in nodes.NODE_CLASS_MAPPINGS:
                 out[x] = node_info(x)
             return web.json_response(out)
+          
+        @routes.post('/run_graph')
+        async def run_graph(request):
+            json_data =  await request.json()
+            print(json_data)
+            # 创建节点执行器并执行
+            executor = execution.NodeExecutor(json_data)
+            results = executor.execute()
+            print(results)
+            return web.json_response({})
 
         def node_info(node_class):
             obj_class = nodes.NODE_CLASS_MAPPINGS[node_class]
