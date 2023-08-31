@@ -5,12 +5,20 @@ import { ComfyUI, $el } from "./ui.js";
 export class ComfyApp {
 	constructor() {
 		this.ui = new ComfyUI(this);
+
+		/**
+		 * List of extensions that are registered with the app
+		 * @type {ComfyExtension[]}
+		 */
+		this.extensions = [];
 	}
 
 	/**
 	 * Set up the app on the page
 	 */
 	async setup() {
+		await this.#loadExtensions();
+
 		const mainCanvas = document.createElement("canvas")
 		mainCanvas.style.touchAction = "none"
 		const canvasEl = (this.canvasEl = Object.assign(mainCanvas, { id: "graph-canvas" }));
@@ -40,10 +48,13 @@ export class ComfyApp {
 		resizeCanvas();
 		window.addEventListener("resize", resizeCanvas);
 
+		await this.#invokeExtensionsAsync("init");
 		await this.registerNodes();
 
 		// Save current workflow automatically
 		setInterval(() => localStorage.setItem("workflow", JSON.stringify(this.graph.serialize())), 1000);
+
+		await this.#invokeExtensionsAsync("setup");
 	}
 
 	/**
@@ -54,14 +65,18 @@ export class ComfyApp {
 		// Load node definitions from the backend
 		const defs = await api.getNodeDefs();
 		await this.registerNodesFromDefs(defs);
+		await this.#invokeExtensionsAsync("registerCustomNodes");
 	}
 
 
 	async registerNodesFromDefs(defs) {
+		await this.#invokeExtensionsAsync("addCustomNodeDefs", defs);
+
 		// Generate list of known widgets
 		const widgets = Object.assign(
 			{},
 			ComfyWidgets,
+			...(await this.#invokeExtensionsAsync("getCustomWidgets")).filter(Boolean)
 		);
 
 		// Register a node for each definition
@@ -115,17 +130,73 @@ export class ComfyApp {
 					comfyClass: nodeData.name,
 				}
 			);
-			node.prototype.comfyClass = nodeData.name;
 
+			node.prototype.comfyClass = nodeData.name;
+			await this.#invokeExtensionsAsync("beforeRegisterNodeDef", node, nodeData);
 			LiteGraph.registerNodeType(nodeId, node);
 			node.category = nodeData.category;
 		}
 	}
 
 	/**
- * 将当前图形工作流转换为适合发送至 API 的格式。
- * @returns {Object} 包含序列化后的工作流和节点连接的对象。
+	 * 从 API URL 加载扩展
+	 */
+	async #loadExtensions() {
+		const extensions = await api.getExtensions();
+		for (const ext of extensions) {
+			try {
+				await import(api.apiURL(ext));
+			} catch (error) {
+				console.error("Error loading extension", ext, error);
+			}
+		}
+	}
+
+	/**
+ * Invoke an async extension callback
+ * Each callback will be invoked concurrently
+ * @param {string} method The extension callback to execute
+ * @param  {...any} args Any arguments to pass to the callback
+ * @returns
  */
+	async #invokeExtensionsAsync(method, ...args) {
+		// 这里传入的是一个自定义插件的不同执行阶段的函数名称，具体参考 logging.js.example 文件的说明
+		return await Promise.all(
+			this.extensions.map(async (ext) => {
+				if (method in ext) {
+					try {
+						return await ext[method](...args, this);
+					} catch (error) {
+						console.error(
+							`Error calling extension '${ext.name}' method '${method}'`,
+							{ error },
+							{ extension: ext },
+							{ args }
+						);
+					}
+				}
+			})
+		);
+	}
+
+	/**
+	 * Registers extension with the app
+	 * @param {ComfyExtension} extension
+	 */
+	registerExtension(extension) {
+		if (!extension.name) {
+			throw new Error("Extensions must have a 'name' property.");
+		}
+		if (this.extensions.find((ext) => ext.name === extension.name)) {
+			throw new Error(`Extension named '${extension.name}' already registered.`);
+		}
+		this.extensions.push(extension);
+	}
+
+	/**
+	 * 将当前图形工作流转换为适合发送至 API 的格式。
+	 * @returns {Object} 包含序列化后的工作流和节点连接的对象。
+	 */
 	async graphToPrompt() {
 		// 序列化图形工作流
 		const workflow = this.graph.serialize();

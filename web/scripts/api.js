@@ -1,5 +1,3 @@
-import { AddNode, SubtractNode, MultiplyNode, DivideNode, TextInportNode, ValueInportNode } from "./api_mock.js";
-
 class ComfyApi extends EventTarget {
 	#registered = new Set();
 
@@ -27,19 +25,19 @@ class ComfyApi extends EventTarget {
 	 * @returns The node definitions
 	 */
 	async getNodeDefs() {
-		// const resp = await this.fetchApi("/object_info", { cache: "no-store" });
-		// return await resp.json();
-
-		// Mock data
-		return {
-			AddNode,
-			SubtractNode,
-			MultiplyNode,
-			DivideNode,
-			TextInportNode,
-			ValueInportNode
-		}
+		const resp = await this.fetchApi("/object_info", { cache: "no-store" });
+		return await resp.json();
 	}
+
+	/**
+	 * Gets a list of extension urls
+	 * @returns An array of script urls to import
+	 */
+	async getExtensions() {
+		const resp = await this.fetchApi("/extensions", { cache: "no-store" });
+		return await resp.json();
+	}
+
 }
 
 export const api = new ComfyApi();

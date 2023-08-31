@@ -10,6 +10,86 @@ function getNumberDefaults(inputData, defaultStep) {
 	return { val: defaultVal, config: { min, max, step: 10.0 * step } };
 }
 
+/**
+ * 添加值控制小部件到节点上。
+ * @param {Node} node - 目标节点。
+ * @param {Widget} targetWidget - 目标小部件，需要受控制的小部件。
+ * @param {string} [defaultValue="randomize"] - 默认值，控制模式的初始设置。可选值包括 "fixed", "increment", "decrement", "randomize"。
+ * @param {Array<string>} [values] - 控制模式的可选值。默认为 ["fixed", "increment", "decrement", "randomize"]。
+ * @returns {Widget} - 返回创建的值控制小部件。
+ */
+export function addValueControlWidget(node, targetWidget, defaultValue = "randomize", values) {
+	/**
+	 * 值控制小部件。
+	 * @type {Widget}
+	 */
+	const valueControl = node.addWidget("combo", "control_after_generate", defaultValue, function (v) { }, {
+		values: ["fixed", "increment", "decrement", "randomize"],
+		serialize: false,
+	});
+
+	// 在排队后执行的操作
+	valueControl.afterQueued = () => {
+		var v = valueControl.value;
+		if (targetWidget.type == "combo" && v !== "fixed") {
+			let current_index = targetWidget.options.values.indexOf(targetWidget.value);
+			let current_length = targetWidget.options.values.length;
+
+			switch (v) {
+				case "increment":
+					current_index += 1;
+					break;
+				case "decrement":
+					current_index -= 1;
+					break;
+				case "randomize":
+					current_index = Math.floor(Math.random() * current_length);
+				default:
+					break;
+			}
+
+			current_index = Math.max(0, current_index);
+			current_index = Math.min(current_length - 1, current_index);
+			if (current_index >= 0) {
+				let value = targetWidget.options.values[current_index];
+				targetWidget.value = value;
+				targetWidget.callback(value);
+			}
+		} else { //number
+			let min = targetWidget.options.min;
+			let max = targetWidget.options.max;
+			// limit to something that javascript can handle
+			max = Math.min(1125899906842624, max);
+			min = Math.max(-1125899906842624, min);
+			let range = (max - min) / (targetWidget.options.step / 10);
+
+			//adjust values based on valueControl Behaviour
+			switch (v) {
+				case "fixed":
+					break;
+				case "increment":
+					targetWidget.value += targetWidget.options.step / 10;
+					break;
+				case "decrement":
+					targetWidget.value -= targetWidget.options.step / 10;
+					break;
+				case "randomize":
+					targetWidget.value = Math.floor(Math.random() * range) * (targetWidget.options.step / 10) + min;
+				default:
+					break;
+			}
+			/*check if values are over or under their respective
+			* ranges and set them to min or max.*/
+			if (targetWidget.value < min)
+				targetWidget.value = min;
+
+			if (targetWidget.value > max)
+				targetWidget.value = max;
+		}
+	}
+	return valueControl;
+};
+
 const MultilineSymbol = Symbol();
 const MultilineResizeSymbol = Symbol();
 
