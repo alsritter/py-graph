@@ -1,4 +1,6 @@
 import nodes
+import threading
+
 
 class NodeExecutor:
     def __init__(self, workflow_json):
@@ -36,7 +38,8 @@ class NodeExecutor:
             function = getattr(node_instance, function_name)
 
             if callable(function):
-                function_args = [node_instance] + [input_values.get(param_name, 0) for param_name in function.__code__.co_varnames[1:]]
+                function_args = [node_instance] + [input_values.get(
+                    param_name, 0) for param_name in function.__code__.co_varnames[1:]]
                 result = function(*function_args)
                 return result
 
@@ -47,18 +50,32 @@ class NodeExecutor:
             return 0  # Default value when no link is provided
 
         linked_node_id, output_index = input_link
-        linked_node = next((node for node in self.nodes if node['id'] == linked_node_id), None)
-        
+        linked_node = next(
+            (node for node in self.nodes if node['id'] == linked_node_id), None)
+
         if linked_node is None:
             return 0  # Linked node not found
-        
+
         linked_output_name = linked_node['outputs'][output_index]['name']
 
         if 'links' in linked_node['outputs'][output_index]:
             output_links = linked_node['outputs'][output_index]['links']
             if output_links is not None and len(output_links) > 0:
                 linked_output_id = output_links[0]
-                linked_output_value = self.execute_node(linked_node['type'], {})
+                linked_output_value = self.execute_node(
+                    linked_node['type'], {})
                 return linked_output_value
 
         return 0
+
+
+class RunnerQueue:
+    def __init__(self, server):
+        self.server = server
+        self.mutex = threading.RLock()
+        self.not_empty = threading.Condition(self.mutex)
+        self.task_counter = 0
+        self.queue = []
+        self.currently_running = {}
+        self.history = {}
+        server.runner_queue = self
