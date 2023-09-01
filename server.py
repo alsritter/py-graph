@@ -1,6 +1,7 @@
 from aiohttp import web
 from typing import Optional, Dict
 import aiohttp
+import asyncio
 import uuid
 import mimetypes  # 映射文件名到 MIME 类型
 import nodes
@@ -8,16 +9,19 @@ import glob
 import os
 import struct
 import execution
+import execution_queue
 
 
 class BinaryEventTypes:
     PREVIEW_TEXT = 1
+
 
 async def send_socket_catch_exception(function, message):
     try:
         await function(message)
     except (aiohttp.ClientError, aiohttp.ClientPayloadError, ConnectionResetError) as err:
         print("send error:", err)
+
 
 @web.middleware
 async def cache_control(request: web.Request, handler):
@@ -46,12 +50,19 @@ def create_cors_middleware(allowed_origin: str):
 
 
 class PyGraphServer:
-    def __init__(self):
+    def __init__(self, loop):
+        # instance 属性用于存储 PyGraphServer 类的单例实例
+        PyGraphServer.instance = self
         mimetypes.init()
         mimetypes.types_map['.js'] = 'application/javascript; charset=utf-8'
 
-        self.runner_queue = None
-
+        self.number = 0
+        self.runner_queue: execution_queue.RunnerQueue = None
+        self.loop = loop
+        # Queue 是 asyncio 模块中的一个类，用于实现异步队列。
+        # 异步队列是一种特殊的队列，它可以在异步程序中安全地传递和共享数据。
+        # 异步队列通常用于协调异步任务之间的通信和同步。
+        self.messages = asyncio.Queue()
         # 设置静态文件路径
         self.web_root = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "web")
@@ -94,31 +105,101 @@ class PyGraphServer:
             return ws
 
         @routes.get("/")
-        async def get_root(request):
+        async def get_root(request: web.Request):
             return web.FileResponse(os.path.join(self.web_root, "index.html"))
 
         @routes.get('/extensions')
-        async def get_extensions(request):
+        async def get_extensions(request: web.Request):
             files = glob.glob(os.path.join(
                 self.web_root, 'extensions/**/*.js'), recursive=True)
             return web.json_response(list(map(lambda f: "/" + os.path.relpath(f, self.web_root).replace("\\", "/"), files)))
 
         @routes.get('/object_info')
-        async def get_object_info(request):
+        async def get_object_info(request: web.Request):
             out = {}
             for x in nodes.NODE_CLASS_MAPPINGS:
                 out[x] = node_info(x)
             return web.json_response(out)
 
-        @routes.post('/run_graph')
-        async def run_graph(request):
+        @routes.get("/object_info/{node_class}")
+        async def get_object_info_node(request: web.Request):
+            node_class = request.match_info.get("node_class", None)
+            out = {}
+            if (node_class is not None) and (node_class in nodes.NODE_CLASS_MAPPINGS):
+                out[node_class] = node_info(node_class)
+            return web.json_response(out)
+
+        @routes.get("/queue")
+        async def get_queue(request: web.Request):
+            queue_info = {}
+            current_queue = self.runner_queue.get_current_queue()
+            queue_info['queue_running'] = current_queue[0]
+            queue_info['queue_pending'] = current_queue[1]
+            return web.json_response(queue_info)
+
+        @routes.get("/runner")
+        async def get_prompt(request):
+            return web.json_response(self.get_queue_info())
+
+
+        @routes.get("/history")
+        async def get_history(request: web.Request):
+            return web.json_response(self.runner_queue.get_history())
+
+        @routes.get("/history/{runner_id}")
+        async def get_history(request: web.Request):
+            runner_id = request.match_info.get("runner_id", None)
+            return web.json_response(self.runner_queue.get_history(runner_id=runner_id))
+
+        @routes.post("/history")
+        async def post_history(request: web.Request):
+            json_data = await request.json()
+            if "clear" in json_data:
+                if json_data["clear"]:
+                    self.runner_queue.wipe_history()
+            if "delete" in json_data:
+                to_delete = json_data['delete']
+                for id_to_delete in to_delete:
+                    self.runner_queue.delete_history_item(id_to_delete)
+
+            return web.Response(status=200)
+
+        @routes.post('/execute')
+        async def execute(request: web.Request):
             json_data = await request.json()
             print(json_data)
-            # 创建节点执行器并执行
-            executor = execution.NodeExecutor(json_data)
-            results = executor.execute()
-            print(results)
-            return web.json_response({})
+
+            if "number" in json_data:
+                number = float(json_data['number'])
+            else:
+                number = self.number
+                if "front" in json_data:
+                    if json_data['front']:
+                        number = -number
+
+                self.number += 1
+            if "runner" in json_data:
+                runner = json_data["runner"]
+                valid = execution.validate_runner(runner)
+                extra_data = {}
+                if "extra_data" in json_data:
+                    extra_data = json_data["extra_data"]
+
+                if "client_id" in json_data:
+                    extra_data["client_id"] = json_data["client_id"]
+                if valid[0]:
+                    runner_id = str(uuid.uuid4())
+                    outputs_to_execute = valid[2]
+                    self.runner_queue.put(
+                        (number, runner_id, runner, extra_data, outputs_to_execute))
+                    response = {"runner_id": runner_id,
+                                "number": number, "node_errors": valid[3]}
+                    return web.json_response(response)
+                else:
+                    print("invalid runner:", valid[1])
+                    return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
+            else:
+                return web.json_response({"error": "no runner", "node_errors": []}, status=400)
 
         def node_info(node_class):
             obj_class = nodes.NODE_CLASS_MAPPINGS[node_class]
@@ -159,14 +240,15 @@ class PyGraphServer:
     def get_queue_info(self):
         runner_info = {}
         exec_info = {}
-        exec_info['queue_remaining'] = self.prompt_queue.get_tasks_remaining()
+        exec_info['queue_remaining'] = self.runner_queue.get_tasks_remaining()
         runner_info['exec_info'] = exec_info
         return runner_info
 
     def encode_bytes(self, event, data):
         # 检查 event 是否为整数类型，如果不是则抛出 RuntimeError 异常。
         if not isinstance(event, int):
-            raise RuntimeError(f"Binary event types must be integers, got {event}")
+            raise RuntimeError(
+                f"Binary event types must be integers, got {event}")
 
         # 格式化字符串 ">I" 表示打包一个大端字节序的无符号整数。其中，>表示大端字节序，I表示无符号整数。
         packed = struct.pack(">I", event)
@@ -181,6 +263,14 @@ class PyGraphServer:
         self.app.add_routes([
             web.static('/', self.web_root, follow_symlinks=True),
         ])
+
+    # 队列用来更新状态的回调函数
+    def queue_updated(self):
+        self.send_sync("status", {"status": self.get_queue_info()})
+
+    def send_sync(self, event, data, sid=None):
+        self.loop.call_soon_threadsafe(
+            self.messages.put_nowait, (event, data, sid))
 
     async def start(self, address, port, verbose=True, call_on_start=None):
         runner = web.AppRunner(self.app)
