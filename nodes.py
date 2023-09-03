@@ -11,10 +11,9 @@ class BaseNode(ABC):
     @abstractmethod
     def INPUT_TYPES(cls):
         pass
-    
+
     # 这个函数会在执行 execute 之前被调用，用于检查输入是否合法
-    def VALIDATE_INPUTS(self, *args, **kwargs):
-        pass
+    # def VALIDATE_INPUTS(*args, **kwargs):
 
     FUNCTION: str = "execute"
     CATEGORY: str
@@ -29,37 +28,29 @@ class BaseNode(ABC):
     def execute(self, *args, **kwargs):
         pass
 
+
 # ==================== NODES ====================
 
 
 class AddNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "operand1": ("FLOAT", {}),
-                "operand2": ("FLOAT", {})
-            }
-        }
+        return {"required": {"operand1": ("FLOAT", {}), "operand2": ("FLOAT", {})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
     DESCRIPTION = "Adds two numbers together"
     CATEGORY = "Math"
 
-    def execute(self, operand1, operand2):
-        return operand1 + operand2
+    def execute(self, operand1: float, operand2: float):
+        print("AddNode.execute", operand1, operand2)
+        return (operand1 + operand2,)
 
 
 class SubtractNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "minuend": ("FLOAT", {}),
-                "subtrahend": ("FLOAT", {})
-            }
-        }
+        return {"required": {"minuend": ("FLOAT", {}), "subtrahend": ("FLOAT", {})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "subtract"
@@ -67,18 +58,13 @@ class SubtractNode(BaseNode):
     CATEGORY = "Math"
 
     def subtract(self, minuend, subtrahend):
-        return minuend - subtrahend
+        return (minuend - subtrahend,)
 
 
 class MultiplyNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "factor1": ("FLOAT", {}),
-                "factor2": ("FLOAT", {})
-            }
-        }
+        return {"required": {"factor1": ("FLOAT", {}), "factor2": ("FLOAT", {})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -86,18 +72,13 @@ class MultiplyNode(BaseNode):
     CATEGORY = "Math"
 
     def execute(self, factor1, factor2):
-        return factor1 * factor2
+        return (factor1 * factor2,)
 
 
 class DivideNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "dividend": ("FLOAT", {}),
-                "divisor": ("FLOAT", {})
-            }
-        }
+        return {"required": {"dividend": ("FLOAT", {}), "divisor": ("FLOAT", {})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -106,19 +87,15 @@ class DivideNode(BaseNode):
 
     def execute(self, dividend, divisor):
         if divisor != 0:
-            return dividend / divisor
+            return (dividend / divisor,)
         else:
-            return float("inf")
+            return (float("inf"),)
 
 
 class TextInputNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "text": ("STRING", {"multiline": True})
-            }
-        }
+        return {"required": {"text": ("STRING", {"multiline": True})}}
 
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
@@ -127,17 +104,13 @@ class TextInputNode(BaseNode):
     CATEGORY = "Input"
 
     def execute(self, text):
-        return text
+        return (text,)
 
 
 class ValueInputNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "value": ("FLOAT", {})
-            }
-        }
+        return {"required": {"value": ("FLOAT", {})}}
 
     RETURN_TYPES = ("FLOAT",)
     RETURN_NAMES = ("value",)
@@ -146,7 +119,25 @@ class ValueInputNode(BaseNode):
     CATEGORY = "Input"
 
     def execute(self, value):
-        return value
+        return (value,)
+
+
+class OutputToStdoutNode(BaseNode):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"value": ("FLOAT", {})}}
+
+    RETURN_TYPES = ()
+    RETURN_NAMES = ()
+    DESCRIPTION = "输出到控制台"
+    FUNCTION = "execute"
+    CATEGORY = "Output"
+    OUTPUT_NODE = True
+
+    def execute(self, value):
+        print("OutPut: ", value)
+        return ()
+
 
 # ==================== MAPPINGS ====================
 
@@ -157,7 +148,8 @@ NODE_CLASS_MAPPINGS: dict[str, BaseNode] = {
     "Multiply": MultiplyNode,
     "Divide": DivideNode,
     "Text": TextInputNode,
-    "FLOATValue": ValueInputNode
+    "FLOATValue": ValueInputNode,
+    "OutputToStdout": OutputToStdoutNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -166,5 +158,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Multiply": "Multiply",
     "Divide": "Divide",
     "Text": "Text (Multiline line)",
-    "FLOATValue": "FLOAT Value"
+    "FLOATValue": "FLOAT Value",
+    "OutputToStdout": "Output to Stdout",
 }

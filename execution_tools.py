@@ -2,15 +2,16 @@ import nodes
 import traceback
 import sys
 
+
 def validate_runner(runner):
     # 初始化输出节点集合
     outputs = set()
     # 遍历 runner 中的所有节点
     for x in runner:
         # 获取节点类
-        class_ = nodes.NODE_CLASS_MAPPINGS[runner[x]['class_type']]
+        class_ = nodes.NODE_CLASS_MAPPINGS[runner[x]["class_type"]]
         # 如果节点类有 OUTPUT_NODE 属性且为 True，则将该节点加入输出节点集合
-        if hasattr(class_, 'OUTPUT_NODE') and class_.OUTPUT_NODE == True:
+        if hasattr(class_, "OUTPUT_NODE") and class_.OUTPUT_NODE == True:
             outputs.add(x)
 
     # 如果输出节点集合为空，则返回错误信息
@@ -19,7 +20,7 @@ def validate_runner(runner):
             "type": "runner_no_outputs",
             "message": "runner has no outputs",
             "details": "",
-            "extra_info": {}
+            "extra_info": {},
         }
         return (False, error, [], [])
 
@@ -43,15 +44,17 @@ def validate_runner(runner):
             typ, _, tb = sys.exc_info()
             valid = False
             exception_type = full_type_name(typ)
-            reasons = [{
-                "type": "exception_during_validation",
-                "message": "Exception when validating node",
-                "details": str(ex),
-                "extra_info": {
-                    "exception_type": exception_type,
-                    "traceback": traceback.format_tb(tb)
+            reasons = [
+                {
+                    "type": "exception_during_validation",
+                    "message": "Exception when validating node",
+                    "details": str(ex),
+                    "extra_info": {
+                        "exception_type": exception_type,
+                        "traceback": traceback.format_tb(tb),
+                    },
                 }
-            }]
+            ]
             validated[o] = (False, reasons, o)
 
         # 如果节点输入参数合法，则将该节点加入合法输出节点集合
@@ -72,16 +75,15 @@ def validate_runner(runner):
                 # 因此，在返回节点错误信息字典时，不应该包含这些节点
                 if valid is not True and len(reasons) > 0:
                     if node_id not in node_errors:
-                        class_type = runner[node_id]['class_type']
+                        class_type = runner[node_id]["class_type"]
                         node_errors[node_id] = {
                             "errors": reasons,
                             "dependent_outputs": [],
-                            "class_type": class_type
+                            "class_type": class_type,
                         }
                         print(f"* {class_type} {node_id}:")
                         for reason in reasons:
-                            print(
-                                f"  - {reason['message']}: {reason['details']}")
+                            print(f"  - {reason['message']}: {reason['details']}")
                     node_errors[node_id]["dependent_outputs"].append(o)
             print("Output will be ignored")
 
@@ -97,7 +99,7 @@ def validate_runner(runner):
             "type": "runner_outputs_failed_validation",
             "message": "runner outputs failed validation",
             "details": errors_list,
-            "extra_info": {}
+            "extra_info": {},
         }
 
         return (False, error, list(good_outputs), node_errors)
@@ -108,9 +110,9 @@ def validate_runner(runner):
 
 def full_type_name(klass):
     module = klass.__module__
-    if module == 'builtins':
+    if module == "builtins":
         return klass.__qualname__
-    return module + '.' + klass.__qualname__
+    return module + "." + klass.__qualname__
 
 
 def validate_inputs(runner, item, validated):
@@ -129,12 +131,12 @@ def validate_inputs(runner, item, validated):
     if unique_id in validated:
         return validated[unique_id]
 
-    inputs = runner[unique_id]['inputs']
-    class_type = runner[unique_id]['class_type']
+    inputs = runner[unique_id]["inputs"]
+    class_type = runner[unique_id]["class_type"]
     obj_class = nodes.NODE_CLASS_MAPPINGS[class_type]
 
     class_inputs = obj_class.INPUT_TYPES()
-    required_inputs = class_inputs['required']
+    required_inputs = class_inputs["required"]
 
     errors = []
     valid = True
@@ -145,9 +147,7 @@ def validate_inputs(runner, item, validated):
                 "type": "required_input_missing",
                 "message": "缺少必需的输入",
                 "details": f"{x}",
-                "extra_info": {
-                    "input_name": x
-                }
+                "extra_info": {"input_name": x},
             }
             errors.append(error)
             continue
@@ -164,14 +164,14 @@ def validate_inputs(runner, item, validated):
                     "extra_info": {
                         "input_name": x,
                         "input_config": info,
-                        "received_value": val
-                    }
+                        "received_value": val,
+                    },
                 }
                 errors.append(error)
                 continue
 
             o_id = val[0]
-            o_class_type = runner[o_id]['class_type']
+            o_class_type = runner[o_id]["class_type"]
             r = nodes.NODE_CLASS_MAPPINGS[o_class_type].RETURN_TYPES
             if r[val[1]] != type_input:
                 received_type = r[val[1]]
@@ -184,8 +184,8 @@ def validate_inputs(runner, item, validated):
                         "input_name": x,
                         "input_config": info,
                         "received_type": received_type,
-                        "linked_node": val
-                    }
+                        "linked_node": val,
+                    },
                 }
                 errors.append(error)
                 continue
@@ -199,19 +199,21 @@ def validate_inputs(runner, item, validated):
                 typ, _, tb = sys.exc_info()
                 valid = False
                 exception_type = full_type_name(typ)
-                reasons = [{
-                    "type": "exception_during_inner_validation",
-                    "message": "验证内部节点时出现异常",
-                    "details": str(ex),
-                    "extra_info": {
-                        "input_name": x,
-                        "input_config": info,
-                        "exception_message": str(ex),
-                        "exception_type": exception_type,
-                        "traceback": traceback.format_tb(tb),
-                        "linked_node": val
+                reasons = [
+                    {
+                        "type": "exception_during_inner_validation",
+                        "message": "验证内部节点时出现异常",
+                        "details": str(ex),
+                        "extra_info": {
+                            "input_name": x,
+                            "input_config": info,
+                            "exception_message": str(ex),
+                            "exception_type": exception_type,
+                            "traceback": traceback.format_tb(tb),
+                            "linked_node": val,
+                        },
                     }
-                }]
+                ]
                 validated[o_id] = (False, reasons, o_id)
                 continue
         else:
@@ -234,8 +236,8 @@ def validate_inputs(runner, item, validated):
                         "input_name": x,
                         "input_config": info,
                         "received_value": val,
-                        "exception_message": str(ex)
-                    }
+                        "exception_message": str(ex),
+                    },
                 }
                 errors.append(error)
                 continue
@@ -250,7 +252,7 @@ def validate_inputs(runner, item, validated):
                             "input_name": x,
                             "input_config": info,
                             "received_value": val,
-                        }
+                        },
                     }
                     errors.append(error)
                     continue
@@ -263,7 +265,7 @@ def validate_inputs(runner, item, validated):
                             "input_name": x,
                             "input_config": info,
                             "received_value": val,
-                        }
+                        },
                     }
                     errors.append(error)
                     continue
@@ -271,8 +273,7 @@ def validate_inputs(runner, item, validated):
             # 如果节点有验证输入的自定义方法，则调用该方法
             if hasattr(obj_class, "VALIDATE_INPUTS"):
                 input_data_all = get_input_data(inputs, obj_class, unique_id)
-                ret = map_node_over_list(
-                    obj_class, input_data_all, "VALIDATE_INPUTS")
+                ret = map_node_over_list(obj_class, input_data_all, "VALIDATE_INPUTS")
 
                 for i, r in enumerate(ret):
                     if r is not True:
@@ -288,7 +289,7 @@ def validate_inputs(runner, item, validated):
                                 "input_name": x,
                                 "input_config": info,
                                 "received_value": val,
-                            }
+                            },
                         }
                         errors.append(error)
                         continue
@@ -313,7 +314,7 @@ def validate_inputs(runner, item, validated):
                                 "input_name": x,
                                 "input_config": input_config,
                                 "received_value": val,
-                            }
+                            },
                         }
                         errors.append(error)
                         continue
@@ -327,7 +328,9 @@ def validate_inputs(runner, item, validated):
     return ret
 
 
-def get_input_data(inputs, class_def: nodes.BaseNode, unique_id, outputs={}):
+def get_input_data(
+    inputs, class_def: nodes.BaseNode, unique_id, outputs={}, runners={}, extra_data={}
+):
     """
     从输入数据中获取节点的输入参数。
 
@@ -364,13 +367,19 @@ def get_input_data(inputs, class_def: nodes.BaseNode, unique_id, outputs={}):
         else:
             # 如果输入参数不是一个列表，则表示该参数是直接指定的
             # 如果该参数是必需的或可选的，则将其加入节点的输入参数字典中
-            if ("required" in valid_inputs and x in valid_inputs["required"]) or ("optional" in valid_inputs and x in valid_inputs["optional"]):
+            if ("required" in valid_inputs and x in valid_inputs["required"]) or (
+                "optional" in valid_inputs and x in valid_inputs["optional"]
+            ):
                 input_data_all[x] = [input_data]
 
     # 处理节点的隐藏输入参数
     if "hidden" in valid_inputs:
         h = valid_inputs["hidden"]
         for x in h:
+            if h[x] == "PROMPT":
+                input_data_all[x] = [runners]
+            if h[x] == "EXTRA_PNGINFO":
+                print("EXTRA_PNGINFO", extra_data)
             if h[x] == "UNIQUE_ID":
                 input_data_all[x] = [unique_id]
     # 返回节点的输入参数字典
@@ -394,26 +403,27 @@ def get_output_data(obj: nodes.BaseNode, input_data_all):
     """
     results = []
     uis = []
-    return_values = map_node_over_list(
-        obj, input_data_all, obj.FUNCTION, allow_interrupt=True)
+    # 调用 map_node_over_list 函数执行节点的 FUNCTION 方法，并将结果存储在 return_values 列表中
+    return_values = map_node_over_list(obj, input_data_all, obj.FUNCTION)
 
+    # 遍历 return_values 列表，将其中的结果分别存储在 results 和 uis 列表中
     for r in return_values:
         if isinstance(r, dict):
-            if 'ui' in r:
-                uis.append(r['ui'])
-            if 'result' in r:
-                results.append(r['result'])
+            if "ui" in r:
+                uis.append(r["ui"])
+            if "result" in r:
+                results.append(r["result"])
         else:
             results.append(r)
 
     output = []
     if len(results) > 0:
-        # check which outputs need concatenating
+        # 检查哪些输出是一个 List
         output_is_list = [False] * len(results[0])
         if hasattr(obj, "OUTPUT_IS_LIST"):
             output_is_list = obj.OUTPUT_IS_LIST
 
-        # merge node execution results
+        # 合并节点执行结果
         for i, is_list in zip(range(len(results[0])), output_is_list):
             if is_list:
                 output.append([x for o in results for x in o[i]])
@@ -422,6 +432,7 @@ def get_output_data(obj: nodes.BaseNode, input_data_all):
 
     ui = dict()
     if len(uis) > 0:
+        # 合并 UI 数据
         ui = {k: [y for x in uis for y in x[k]] for k in uis[0].keys()}
     return output, ui
 
@@ -435,7 +446,17 @@ def format_value(x):
         return str(x)
 
 
-def recursive_execute(server, runners, outputs, current_item, extra_data, executed, runner_id, outputs_ui, object_storage):
+def recursive_execute(
+    server,
+    runners,
+    outputs,
+    current_item,
+    extra_data,
+    executed,
+    runner_id,
+    outputs_ui,
+    object_storage,
+):
     """
     递归执行节点。
 
@@ -458,8 +479,8 @@ def recursive_execute(server, runners, outputs, current_item, extra_data, execut
 
     """
     unique_id = current_item
-    inputs = runners[unique_id]['inputs']
-    class_type = runners[unique_id]['class_type']
+    inputs = runners[unique_id]["inputs"]
+    class_type = runners[unique_id]["class_type"]
     class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
     if unique_id in outputs:
         return (True, None, None)
@@ -471,20 +492,34 @@ def recursive_execute(server, runners, outputs, current_item, extra_data, execut
             input_unique_id = input_data[0]
             output_index = input_data[1]
             if input_unique_id not in outputs:
-                result = recursive_execute(server, runners, outputs, input_unique_id,
-                                           extra_data, executed, runner_id, outputs_ui, object_storage)
+                result = recursive_execute(
+                    server,
+                    runners,
+                    outputs,
+                    input_unique_id,
+                    extra_data,
+                    executed,
+                    runner_id,
+                    outputs_ui,
+                    object_storage,
+                )
                 if result[0] is not True:
                     # Another node failed further upstream
                     return result
 
+
     input_data_all = None
     try:
         input_data_all = get_input_data(
-            inputs, class_def, unique_id, outputs, runners, extra_data)
+            inputs, class_def, unique_id, outputs, runners, extra_data
+        )
         if server.client_id is not None:
             server.last_node_id = unique_id
             server.send_sync(
-                "executing", {"node": unique_id, "runner_id": runner_id}, server.client_id)
+                "executing",
+                {"node": unique_id, "runner_id": runner_id},
+                server.client_id,
+            )
 
         obj = object_storage.get((unique_id, class_type), None)
         if obj is None:
@@ -496,8 +531,11 @@ def recursive_execute(server, runners, outputs, current_item, extra_data, execut
         if len(output_ui) > 0:
             outputs_ui[unique_id] = output_ui
             if server.client_id is not None:
-                server.send_sync("executed", {
-                                 "node": unique_id, "output": output_ui, "runner_id": runner_id}, server.client_id)
+                server.send_sync(
+                    "executed",
+                    {"node": unique_id, "output": output_ui, "runner_id": runner_id},
+                    server.client_id,
+                )
         print("Processing interrupted")
 
         # skip formatting inputs/outputs
@@ -516,7 +554,8 @@ def recursive_execute(server, runners, outputs, current_item, extra_data, execut
         output_data_formatted = {}
         for node_id, node_outputs in outputs.items():
             output_data_formatted[node_id] = [
-                [format_value(x) for x in l] for l in node_outputs]
+                [format_value(x) for x in l] for l in node_outputs
+            ]
 
         print("!!! Exception during processing !!!")
         print(traceback.format_exc())
@@ -527,7 +566,7 @@ def recursive_execute(server, runners, outputs, current_item, extra_data, execut
             "exception_type": exception_type,
             "traceback": traceback.format_tb(tb),
             "current_inputs": input_data_formatted,
-            "current_outputs": output_data_formatted
+            "current_outputs": output_data_formatted,
         }
         return (False, error_details, ex)
 
@@ -554,29 +593,29 @@ def recursive_output_delete_if_changed(runners, old_runners, outputs, current_it
 
     """
     unique_id = current_item
-    inputs = runners[unique_id]['inputs']
-    class_type = runners[unique_id]['class_type']
+    inputs = runners[unique_id]["inputs"]
+    class_type = runners[unique_id]["class_type"]
     class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
 
-    is_changed_old = ''
-    is_changed = ''
+    is_changed_old = ""
+    is_changed = ""
     to_delete = False
-    if hasattr(class_def, 'IS_CHANGED'):
-        if unique_id in old_runners and 'is_changed' in old_runners[unique_id]:
-            is_changed_old = old_runners[unique_id]['is_changed']
-        if 'is_changed' not in runners[unique_id]:
-            input_data_all = get_input_data(
-                inputs, class_def, unique_id, outputs)
+    if hasattr(class_def, "IS_CHANGED"):
+        if unique_id in old_runners and "is_changed" in old_runners[unique_id]:
+            is_changed_old = old_runners[unique_id]["is_changed"]
+        if "is_changed" not in runners[unique_id]:
+            input_data_all = get_input_data(inputs, class_def, unique_id, outputs)
             if input_data_all is not None:
                 try:
                     # is_changed = class_def.IS_CHANGED(**input_data_all)
                     is_changed = map_node_over_list(
-                        class_def, input_data_all, "IS_CHANGED")
-                    runners[unique_id]['is_changed'] = is_changed
+                        class_def, input_data_all, "IS_CHANGED"
+                    )
+                    runners[unique_id]["is_changed"] = is_changed
                 except:
                     to_delete = True
         else:
-            is_changed = runners[unique_id]['is_changed']
+            is_changed = runners[unique_id]["is_changed"]
 
     if unique_id not in outputs:
         return True
@@ -586,7 +625,7 @@ def recursive_output_delete_if_changed(runners, old_runners, outputs, current_it
             to_delete = True
         elif unique_id not in old_runners:
             to_delete = True
-        elif inputs == old_runners[unique_id]['inputs']:
+        elif inputs == old_runners[unique_id]["inputs"]:
             for x in inputs:
                 input_data = inputs[x]
 
@@ -595,7 +634,8 @@ def recursive_output_delete_if_changed(runners, old_runners, outputs, current_it
                     output_index = input_data[1]
                     if input_unique_id in outputs:
                         to_delete = recursive_output_delete_if_changed(
-                            runners, old_runners, outputs, input_unique_id)
+                            runners, old_runners, outputs, input_unique_id
+                        )
                     else:
                         to_delete = True
                     if to_delete:
@@ -626,7 +666,7 @@ def recursive_will_execute(runners, outputs, current_item):
 
     """
     unique_id = current_item
-    inputs = runners[unique_id]['inputs']
+    inputs = runners[unique_id]["inputs"]
     will_execute = []
     if unique_id in outputs:
         return []
@@ -638,7 +678,8 @@ def recursive_will_execute(runners, outputs, current_item):
             output_index = input_data[1]
             if input_unique_id not in outputs:
                 will_execute += recursive_will_execute(
-                    runners, outputs, input_unique_id)
+                    runners, outputs, input_unique_id
+                )
 
     return will_execute + [unique_id]
 
