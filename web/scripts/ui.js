@@ -562,31 +562,21 @@ export class ComfyUI {
     // 创建菜单容器
     this.menuContainer = $el("div.comfy-menu", { parent: document.body }, [
       // 注意，这个 class 名称是有对应样式的
-			$el("div.drag-handle", {
-				style: {
-					position: "relative",
-					width: "100%",
-					cursor: "default"
-				}
-			}, [
-				$el("span.drag-handle"),
-				$el("button.comfy-settings-btn", {textContent: "⚙️", onclick: () => this.settings.show()}),
-			]),
-      $el("div.comfy-menu-content", [
-        // 运行按钮
-        $el("button.comfy-menu-btn", {
-          textContent: "Run",
-          // 给个合适大小的样式
-          style: {
-            width: "100%",
-            height: "1.3em",
-          },
-          onclick: async () => {
-            const val = await this.app.run();
-            console.log(val);
-          },
-        }),
+      $el("div.drag-handle", {
+        style: {
+          position: "relative",
+          width: "100%",
+          cursor: "default"
+        }
+      }, [
+        $el("span.drag-handle"),
+        $el("button.comfy-settings-btn", { textContent: "⚙️", onclick: () => this.settings.show() }),
       ]),
+      $el("button.comfy-queue-btn", {
+        id: "queue-button",
+        textContent: "Queue Runner",
+        onclick: () => app.queueRunner(0, this.batchCount),
+      }),
       $el("div", {}, [
         $el("label", { innerHTML: "Extra options" }, [
           $el("input", {

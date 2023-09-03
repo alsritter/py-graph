@@ -3,6 +3,18 @@ import { ComfyWidgets } from "./widgets.js";
 import { ComfyUI, $el } from "./ui.js";
 
 export class ComfyApp {
+	/**
+	 * List of entries to queue
+	 * @type {{number: number, batchCount: number}[]}
+	 */
+	#queueItems = [];
+
+	/**
+	 * If the queue is currently being processed
+	 * @type {boolean}
+	 */
+	#processingQueue = false;
+
 	constructor() {
 		this.ui = new ComfyUI(this);
 
@@ -221,21 +233,59 @@ export class ComfyApp {
 	/**
 	 * 执行当前图形工作流。
 	 */
-	async run() {
-		const p = await this.graphToPrompt();
+	async queueRunner(number, batchCount = 1) {
+		this.#queueItems.push({ number, batchCount });
+
+		// Only have one action process the items so each one gets a unique seed correctly
+		if (this.#processingQueue) {
+			return;
+		}
+
+		this.#processingQueue = true;
+		this.lastNodeErrors = null;
+
 		try {
-			const res = await api.runGraph(p);
-			this.lastNodeErrors = res.node_errors;
-			if (this.lastNodeErrors.length > 0) {
-				this.canvas.draw(true, true);
+			while (this.#queueItems.length) {
+				({ number, batchCount } = this.#queueItems.pop());
+
+				for (let i = 0; i < batchCount; i++) {
+					const p = await this.graphToRunner();
+
+					try {
+						const res = await api.queueRunner(number, p);
+						this.lastNodeErrors = res.node_errors;
+						if (this.lastNodeErrors.length > 0) {
+							this.canvas.draw(true, true);
+						}
+					} catch (error) {
+						const formattedError = this.#formatPromptError(error)
+						this.ui.dialog.show(formattedError);
+						if (error.response) {
+							this.lastNodeErrors = error.response.node_errors;
+							this.canvas.draw(true, true);
+						}
+						break;
+					}
+
+					for (const n of p.workflow.nodes) {
+						const node = graph.getNodeById(n.id);
+						if (node.widgets) {
+							for (const widget of node.widgets) {
+								// Allow widgets to run callbacks after a prompt has been queued
+								// e.g. random seed after every gen
+								if (widget.afterQueued) {
+									widget.afterQueued();
+								}
+							}
+						}
+					}
+
+					this.canvas.draw(true, true);
+					await this.ui.queue.update();
+				}
 			}
-		} catch (error) {
-			const formattedError = this.#formatPromptError(error)
-			this.ui.dialog.show(formattedError);
-			if (error.response) {
-				this.lastNodeErrors = error.response.node_errors;
-				this.canvas.draw(true, true);
-			}
+		} finally {
+			this.#processingQueue = false;
 		}
 	}
 
@@ -243,7 +293,7 @@ export class ComfyApp {
 	 * 将当前图形工作流转换为适合发送至 API 的格式。
 	 * @returns {Object} 包含序列化后的工作流和节点连接的对象。
 	 */
-	async graphToPrompt() {
+	async graphToRunner() {
 		// 序列化图形工作流
 		const workflow = this.graph.serialize();
 		const output = {};

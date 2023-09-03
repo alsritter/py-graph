@@ -21,6 +21,8 @@ def runner_worker(queue: execution_queue.RunnerQueue, server):
 
         print("runner executed in {:.2f} seconds".format(
             time.perf_counter() - execution_start_time))
+        
+        # 手动触发垃圾回收。
         gc.collect()
 
 

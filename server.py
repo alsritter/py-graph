@@ -9,6 +9,7 @@ import glob
 import os
 import struct
 import execution
+import execution_tools
 import execution_queue
 
 
@@ -180,7 +181,7 @@ class PyGraphServer:
                 self.number += 1
             if "runner" in json_data:
                 runner = json_data["runner"]
-                valid = execution.validate_runner(runner)
+                valid = execution_tools.validate_runner(runner)
                 extra_data = {}
                 if "extra_data" in json_data:
                     extra_data = json_data["extra_data"]

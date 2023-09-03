@@ -23,7 +23,7 @@ class BaseNode(ABC):
     INPUT_IS_LIST: bool = False
     RETURN_TYPES: tuple[str, ...]
     RETURN_NAMES: tuple[str, ...]
-    OUTPUT_IS_LIST: tuple[bool, ...] = [False] * len(RETURN_TYPES)
+    # OUTPUT_IS_LIST: tuple[bool, ...] = [False] * len(RETURN_TYPES)
 
     @abstractmethod
     def execute(self, *args, **kwargs):

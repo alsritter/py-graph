@@ -39,24 +39,38 @@ class ComfyApi extends EventTarget {
 	}
 
 	/**
-	 * Gets a list of available workflows
+	 *
+	 * @param {number} number The index at which to queue the runner, passing -1 will insert the runner at the front of the queue
+	 * @param {object} runner The runner data to queue
 	 */
-	async runGraph({ output, workflow }) {
-		const resp = await this.fetchApi("/run_graph", {
+	async queueRunner(number, { output, workflow }) {
+		const body = {
+			client_id: this.clientId,
+			runner: output,
+			extra_data: { extra_pnginfo: { workflow } },
+		};
+
+		if (number === -1) {
+			body.front = true;
+		} else if (number != 0) {
+			body.number = number;
+		}
+
+		const res = await this.fetchApi("/execute", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ output, workflow }),
+			body: JSON.stringify(body),
 		});
 
-		if (resp.status !== 200) {
+		if (res.status !== 200) {
 			throw {
-				response: await resp.json(),
+				response: await res.json(),
 			};
 		}
 
-		return await resp.json();
+		return await res.json();
 	}
 }
 
