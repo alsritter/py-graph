@@ -35,7 +35,7 @@ class BaseNode(ABC):
 class AddNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"operand1": ("FLOAT", {}), "operand2": ("FLOAT", {})}}
+        return {"required": {"operand1": ("FLOAT", {"default_input": True}), "operand2": ("FLOAT", {"default_input": True})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -50,7 +50,7 @@ class AddNode(BaseNode):
 class SubtractNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"minuend": ("FLOAT", {}), "subtrahend": ("FLOAT", {})}}
+        return {"required": {"minuend": ("FLOAT", {"default_input": True}), "subtrahend": ("FLOAT", {"default_input": True})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "subtract"
@@ -64,7 +64,7 @@ class SubtractNode(BaseNode):
 class MultiplyNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"factor1": ("FLOAT", {}), "factor2": ("FLOAT", {})}}
+        return {"required": {"factor1": ("FLOAT", {"default_input": True}), "factor2": ("FLOAT", {"default_input": True})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -78,7 +78,7 @@ class MultiplyNode(BaseNode):
 class DivideNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"dividend": ("FLOAT", {}), "divisor": ("FLOAT", {})}}
+        return {"required": {"dividend": ("FLOAT", {"default_input": True}), "divisor": ("FLOAT", {"default_input": True})}}
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -125,7 +125,7 @@ class ValueInputNode(BaseNode):
 class OutputToStdoutNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"value": ("FLOAT", {})}}
+        return {"required": {"value": ("FLOAT", {"default_input": True})}}
 
     RETURN_TYPES = ()
     RETURN_NAMES = ()

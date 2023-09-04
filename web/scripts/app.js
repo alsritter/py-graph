@@ -23,6 +23,12 @@ export class ComfyApp {
 		 * @type {ComfyExtension[]}
 		 */
 		this.extensions = [];
+
+		/**
+		 * Stores the execution output data for each node
+		 * @type {Record<string, any>}
+		 */
+		this.nodeOutputs = {};
 	}
 
 	/**
@@ -62,6 +68,24 @@ export class ComfyApp {
 
 		await this.#invokeExtensionsAsync("init");
 		await this.registerNodes();
+
+		// Load previous workflow
+		let restored = false;
+		try {
+			const json = localStorage.getItem("workflow");
+			if (json) {
+				const workflow = JSON.parse(json);
+				this.loadGraphData(workflow);
+				restored = true;
+			}
+		} catch (err) {
+			console.error("Error loading previous workflow", err);
+		}
+
+		// We failed to restore a workflow so load the default
+		if (!restored) {
+			this.loadGraphData();
+		}
 
 		// Save current workflow automatically
 		setInterval(() => localStorage.setItem("workflow", JSON.stringify(this.graph.serialize())), 1000);
@@ -165,12 +189,12 @@ export class ComfyApp {
 	}
 
 	/**
- * Invoke an async extension callback
- * Each callback will be invoked concurrently
- * @param {string} method The extension callback to execute
- * @param  {...any} args Any arguments to pass to the callback
- * @returns
- */
+	 * Invoke an async extension callback
+	 * Each callback will be invoked concurrently
+	 * @param {string} method The extension callback to execute
+	 * @param  {...any} args Any arguments to pass to the callback
+	 * @returns
+	 */
 	async #invokeExtensionsAsync(method, ...args) {
 		// 这里传入的是一个自定义插件的不同执行阶段的函数名称，具体参考 logging.js.example 文件的说明
 		return await Promise.all(
@@ -189,6 +213,31 @@ export class ComfyApp {
 				}
 			})
 		);
+	}
+
+	/**
+	 * Invoke an extension callback
+	 * @param {keyof ComfyExtension} method The extension callback to execute
+	 * @param  {any[]} args Any arguments to pass to the callback
+	 * @returns
+	 */
+	#invokeExtensions(method, ...args) {
+		let results = [];
+		for (const ext of this.extensions) {
+			if (method in ext) {
+				try {
+					results.push(ext[method](...args, this));
+				} catch (error) {
+					console.error(
+						`Error calling extension '${ext.name}' method '${method}'`,
+						{ error },
+						{ extension: ext },
+						{ args }
+					);
+				}
+			}
+		}
+		return results;
 	}
 
 	/**
@@ -392,6 +441,121 @@ export class ComfyApp {
 		return { workflow, output };
 	}
 
+	/**
+ * Populates the graph with the specified workflow data
+ * @param {*} graphData A serialized graph object
+ */
+	loadGraphData(graphData) {
+		this.clean();
+
+		let reset_invalid_values = false;
+		if (!graphData) {
+			graphData = structuredClone(defaultGraph);
+			reset_invalid_values = true;
+		}
+
+		const missingNodeTypes = [];
+		for (let n of graphData.nodes) {
+			n.properties = { isLoad: true, ...n.properties }; // 标识这个是加载出来的 Node，避免创建的时候误判
+			// Find missing node types
+			if (!(n.type in LiteGraph.registered_node_types)) {
+				missingNodeTypes.push(n.type);
+			}
+
+			console.log("Loading node", n);
+		}
+
+		try {
+			console.log("Loading graph data", graphData);
+			this.graph.configure(graphData);
+		} catch (error) {
+			let errorHint = [];
+			// Try extracting filename to see if it was caused by an extension script
+			const filename = error.fileName || (error.stack || "").match(/(\/extensions\/.*\.js)/)?.[1];
+			const pos = (filename || "").indexOf("/extensions/");
+			if (pos > -1) {
+				errorHint.push(
+					$el("span", { textContent: "This may be due to the following script:" }),
+					$el("br"),
+					$el("span", {
+						style: {
+							fontWeight: "bold",
+						},
+						textContent: filename.substring(pos),
+					})
+				);
+			}
+
+			// Show dialog to let the user know something went wrong loading the data
+			this.ui.dialog.show(
+				$el("div", [
+					$el("p", { textContent: "Loading aborted due to error reloading workflow data" }),
+					$el("pre", {
+						style: { padding: "5px", backgroundColor: "rgba(255,0,0,0.2)" },
+						textContent: error.toString(),
+					}),
+					$el("pre", {
+						style: {
+							padding: "5px",
+							color: "#ccc",
+							fontSize: "10px",
+							maxHeight: "50vh",
+							overflow: "auto",
+							backgroundColor: "rgba(0,0,0,0.2)",
+						},
+						textContent: error.stack || "No stacktrace available",
+					}),
+					...errorHint,
+				]).outerHTML
+			);
+
+			return;
+		}
+
+		for (const node of this.graph._nodes) {
+			const size = node.computeSize();
+			size[0] = Math.max(node.size[0], size[0]);
+			size[1] = Math.max(node.size[1], size[1]);
+			node.size = size;
+
+			if (node.widgets) {
+				// If you break something in the backend and want to patch workflows in the frontend
+				// This is the place to do this
+				for (let widget of node.widgets) {
+					if (reset_invalid_values) {
+						if (widget.type == "combo") {
+							if (!widget.options.values.includes(widget.value) && widget.options.values.length > 0) {
+								widget.value = widget.options.values[0];
+							}
+						}
+					}
+				}
+			}
+
+			this.#invokeExtensions("loadedGraphNode", node);
+		}
+
+		if (missingNodeTypes.length) {
+			this.ui.dialog.show(
+				`When loading the graph, the following node types were not found: <ul>${Array.from(new Set(missingNodeTypes)).map(
+					(t) => `<li>${t}</li>`
+				).join("")}</ul>Nodes that have failed to load will show as red on the graph.`
+			);
+			this.logging.addEntry("Comfy.App", "warn", {
+				MissingNodes: missingNodeTypes,
+			});
+		}
+	}
+
+	/**
+	 * Clean current state
+	 */
+	clean() {
+		this.nodeOutputs = {};
+		this.lastNodeErrors = null;
+		this.lastExecutionError = null;
+		this.runningNodeId = null;
+	}
 }
 
 export const app = new ComfyApp();

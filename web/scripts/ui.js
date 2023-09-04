@@ -570,6 +570,7 @@ export class ComfyUI {
         }
       }, [
         $el("span.drag-handle"),
+        $el("span", { $: (q) => (this.queueSize = q) }),
         $el("button.comfy-settings-btn", { textContent: "⚙️", onclick: () => this.settings.show() }),
       ]),
       $el("button.comfy-queue-btn", {
@@ -632,5 +633,21 @@ export class ComfyUI {
 
     // 启用菜单拖拽功能
     dragElement(this.menuContainer, this.settings);
+
+    this.setStatus({ exec_info: { queue_remaining: "X" } });
+  }
+
+  setStatus(status) {
+    this.queueSize.textContent = "Queue size: " + (status ? status.exec_info.queue_remaining : "ERR");
+    if (status) {
+      if (
+        this.lastQueueSize != 0 &&
+        status.exec_info.queue_remaining == 0 &&
+        document.getElementById("autoQueueCheckbox").checked
+      ) {
+        app.queuePrompt(0, this.batchCount);
+      }
+      this.lastQueueSize = status.exec_info.queue_remaining;
+    }
   }
 }

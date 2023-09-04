@@ -275,7 +275,11 @@ function isSlider(display, app) {
 export const ComfyWidgets = {
 	FLOAT(node, inputName, inputData, app) {
 		let widgetType = isSlider(inputData[1]["display"], app);
-		const { val, config } = getNumberDefaults(inputData, 0.5);
+		const defaultInput = !!inputData[1].default_input;
+		let { val, config } = getNumberDefaults(inputData, 0.5);
+		if (defaultInput) {
+			config = { ...config, defaultInput: true };
+		}
 		return { widget: node.addWidget(widgetType, inputName, val, () => { }, config) };
 	},
 	INT(node, inputName, inputData, app) {

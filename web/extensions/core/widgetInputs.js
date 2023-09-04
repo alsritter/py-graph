@@ -94,8 +94,38 @@ function getWidgetType(config) {
 // 注册拓展服务
 app.registerExtension({
 	name: "Comfy.WidgetInputs",
+
+	/**
+	 * 在注册节点定义之前调用的异步函数。
+	 * @param {LGraphNode} nodeType - 要注册的节点类型。
+	 * @param {Object} nodeData - 节点数据对象。
+	 * @param {Object} app - 应用程序对象。
+	 * @returns {Promise} - 异步操作的 Promise 对象。
+	 */
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
-		// Add menu options to conver to/from widgets
+
+		// nodeType 的这些函数可以在 litegraph.core 里找到
+		// web/lib/litegraph.core.js#L2404
+		const onAdded = nodeType.prototype.onAdded;
+		nodeType.prototype.onAdded = function () {
+			const r = onAdded ? onAdded.apply(this, arguments) : undefined;
+
+			const s = JSON.stringify(this.serialize());
+			console.log(s);
+			if (this.widgets) {
+				for (const w of this.widgets) {
+					console.log(this.isLoad);
+					if (w.options && w.options.defaultInput && !this.isLoad) {
+						console.log(w);
+						const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
+						convertToInput(this, w, config);
+					}
+				}
+			}
+			return r;
+		}
+
+		// 这个 getExtraMenuOptions 会在 Node 上面右键触发
 		const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
 		nodeType.prototype.getExtraMenuOptions = function (_, options) {
 			const r = origGetExtraMenuOptions ? origGetExtraMenuOptions.apply(this, arguments) : undefined;
@@ -131,24 +161,29 @@ app.registerExtension({
 			return r;
 		};
 
-		// On initial configure of nodes hide all converted widgets
+		// 从配置文件里面加载出来的恢复之前的节点（这个函数会在根据配置重新加载时调用）
 		const origOnConfigure = nodeType.prototype.onConfigure;
+		// 首先保存原始的 onConfigure 回调函数，然后重写 onConfigure 回调函数，调用原始的 onConfigure 回调函数并保存返回值
 		nodeType.prototype.onConfigure = function () {
 			const r = origOnConfigure ? origOnConfigure.apply(this, arguments) : undefined;
 
+			const s = JSON.stringify(this.serialize());
+			console.log(s);
 			if (this.inputs) {
 				for (const input of this.inputs) {
 					if (input.widget) {
+						// 在节点的小部件中查找与输入小部件同名的小部件
 						const w = this.widgets.find((w) => w.name === input.widget.name);
 						if (w) {
+							// 如果找到了同名小部件隐藏该小部件
 							hideWidget(this, w);
 						} else {
+							// 否则将该输入转换为小部件
 							convertToWidget(this, input)
 						}
 					}
 				}
 			}
-
 			return r;
 		};
 
@@ -161,7 +196,11 @@ app.registerExtension({
 			return false;
 		}
 
-		// Double click a widget input to automatically attach a primitive
+		/**
+		 * 双击小部件输入以自动连接一个原始节点。
+		 * @param {number} slot - 输入插槽的索引。
+		 * @returns {*} - 原始 onInputDblClick 方法的返回值。
+		 */
 		const origOnInputDblClick = nodeType.prototype.onInputDblClick;
 		const ignoreDblClick = Symbol();
 		nodeType.prototype.onInputDblClick = function (slot) {
@@ -169,17 +208,17 @@ app.registerExtension({
 
 			const input = this.inputs[slot];
 			if (!input.widget || !input[ignoreDblClick]) {
-				// Not a widget input or already handled input
+				// 不是小部件输入或已处理的输入
 				if (!(input.type in ComfyWidgets) && !(input.widget.config?.[0] instanceof Array)) {
-					return r; //also Not a ComfyWidgets input or combo (do nothing)
+					return r; // 也不是 ComfyWidgets 输入或组合（不执行任何操作）
 				}
 			}
 
-			// Create a primitive node
+			// 创建一个原始节点
 			const node = LiteGraph.createNode("PrimitiveNode");
 			app.graph.add(node);
 
-			// Calculate a position that wont directly overlap another node
+			// 计算一个不会直接重叠其他节点的位置
 			const pos = [this.pos[0] - node.size[0] - 30, this.pos[1]];
 			while (isNodeAtPos(pos)) {
 				pos[1] += LiteGraph.NODE_TITLE_HEIGHT;
@@ -189,7 +228,7 @@ app.registerExtension({
 			node.connect(0, this, slot);
 			node.title = input.name;
 
-			// Prevent adding duplicates due to triple clicking
+			// 防止由于三次点击而添加重复项
 			input[ignoreDblClick] = true;
 			setTimeout(() => {
 				delete input[ignoreDblClick];
