@@ -111,20 +111,18 @@ app.registerExtension({
 		nodeType.prototype.onSerialize = function (node) {
 			const r = onSerialize ? onSerialize.apply(this, arguments) : undefined;
 			node.isLoad = true;
+			// console.log("onSerialize", node);
 			return r;
 		};
 
 		const onAdded = nodeType.prototype.onAdded;
 		nodeType.prototype.onAdded = function () {
 			const r = onAdded ? onAdded.apply(this, arguments) : undefined;
-
-			const s = JSON.stringify(this.serialize());
-			console.log(s);
+			// const obj = this.serialize();
+			console.log("onAdded", this.isLoad);
 			if (this.widgets) {
 				for (const w of this.widgets) {
-					console.log(this.isLoad);
-					if (w.options && w.options.defaultInput && !this.isLoad) {
-						console.log(w);
+					if (w.options && w.options.defaultInput) {
 						const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
 						convertToInput(this, w, config);
 					}
