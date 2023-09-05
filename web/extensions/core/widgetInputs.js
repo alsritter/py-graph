@@ -103,9 +103,17 @@ app.registerExtension({
 	 * @returns {Promise} - 异步操作的 Promise 对象。
 	 */
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
-
 		// nodeType 的这些函数可以在 litegraph.core 里找到
 		// web/lib/litegraph.core.js#L2404
+
+
+		const onSerialize = nodeType.prototype.onSerialize;
+		nodeType.prototype.onSerialize = function (node) {
+			const r = onSerialize ? onSerialize.apply(this, arguments) : undefined;
+			node.isLoad = true;
+			return r;
+		};
+
 		const onAdded = nodeType.prototype.onAdded;
 		nodeType.prototype.onAdded = function () {
 			const r = onAdded ? onAdded.apply(this, arguments) : undefined;
