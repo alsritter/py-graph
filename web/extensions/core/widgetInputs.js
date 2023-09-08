@@ -8,14 +8,34 @@ function isConvertableWidget(widget, config) {
 	return VALID_TYPES.includes(widget.type) || VALID_TYPES.includes(config[0]);
 }
 
+/**
+ * Converted widget representing the first operand.
+ * @typedef {Object} Widget
+ * @property {string} type e.g. "converted-widget"
+ * @property {string} name e.g. "operand1"
+ * @property {number} value e.g. 1.5
+ * @property {Object} options e.g.  { "min": 0, "max": 2048, "step": 5, "defaultInput": true }
+ * @property {string} origType e.g. "number"
+ * @property {number} last_y e.g. 0 垂直位置
+ */
+
+/**
+ * 隐藏一个小部件及其所有链接的小部件。
+ * @param {Object} node - 包含小部件的节点。
+ * @param {Widget} widget - 要隐藏的小部件。
+ * @param {string} suffix - 要添加到小部件类型的后缀。
+ */
 function hideWidget(node, widget, suffix = "") {
+	// 保存原始小部件属性
 	widget.origType = widget.type;
 	widget.origComputeSize = widget.computeSize;
 	widget.origSerializeValue = widget.serializeValue;
-	widget.computeSize = () => [0, -4]; // -4 is due to the gap litegraph adds between widgets automatically
+
+	// 设置小部件属性以隐藏它
+	widget.computeSize = () => [0, -4]; // -4 是由于 litegraph 自动添加的小部件之间的间隙
 	widget.type = CONVERTED_TYPE + suffix;
 	widget.serializeValue = () => {
-		// Prevent serializing the widget if we have no input linked
+		// 如果没有链接输入，则防止序列化小部件
 		const { link } = node.inputs.find((i) => i.widget?.name === widget.name);
 		if (link == null) {
 			return undefined;
@@ -23,7 +43,7 @@ function hideWidget(node, widget, suffix = "") {
 		return widget.origSerializeValue ? widget.origSerializeValue() : widget.value;
 	};
 
-	// Hide any linked widgets, e.g. seed+seedControl
+	// 隐藏任何链接的小部件
 	if (widget.linkedWidgets) {
 		for (const w of widget.linkedWidgets) {
 			hideWidget(node, w, ":" + widget.name);
@@ -40,7 +60,7 @@ function showWidget(widget) {
 	delete widget.origComputeSize;
 	delete widget.origSerializeValue;
 
-	// Hide any linked widgets, e.g. seed+seedControl
+	// Hide any linked widgets
 	if (widget.linkedWidgets) {
 		for (const w of widget.linkedWidgets) {
 			showWidget(w);
@@ -106,47 +126,45 @@ app.registerExtension({
 		// nodeType 的这些函数可以在 litegraph.core 里找到
 		// web/lib/litegraph.core.js#L2404
 
+		// const onAdded = nodeType.prototype.onAdded;
+		// nodeType.prototype.onAdded = function () {
+		// 	const r = onAdded ? onAdded.apply(this, arguments) : undefined;
+		// 	console.log("onAdded", JSON.stringify(this.properties));
+		// 	if (this.widgets) {
+		// 		for (const w of this.widgets) {
+		// 			if (w.options && w.options.defaultInput) {
+		// 				const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
+		// 				convertToInput(this, w, config);
+		// 			}
+		// 		}
+		// 	}
+		// 	return r;
+		// }
 
-		const onSerialize = nodeType.prototype.onSerialize;
-		nodeType.prototype.onSerialize = function (node) {
-			const r = onSerialize ? onSerialize.apply(this, arguments) : undefined;
-			node.isLoad = true;
-			// console.log("onSerialize", node);
-			return r;
-		};
-
-		const onAdded = nodeType.prototype.onAdded;
-		nodeType.prototype.onAdded = function () {
-			const r = onAdded ? onAdded.apply(this, arguments) : undefined;
-			// const obj = this.serialize();
-			console.log("onAdded", this.isLoad);
-			if (this.widgets) {
-				for (const w of this.widgets) {
-					if (w.options && w.options.defaultInput) {
-						const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
-						convertToInput(this, w, config);
-					}
-				}
-			}
-			return r;
-		}
 
 		// 这个 getExtraMenuOptions 会在 Node 上面右键触发
 		const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
 		nodeType.prototype.getExtraMenuOptions = function (_, options) {
 			const r = origGetExtraMenuOptions ? origGetExtraMenuOptions.apply(this, arguments) : undefined;
-
 			if (this.widgets) {
 				let toInput = [];
 				let toWidget = [];
 				for (const w of this.widgets) {
+
+					// 正常情况下，点击把小部件转成输入后，这里的 w.type 会变成 converted-widget
 					if (w.type === CONVERTED_TYPE) {
+						console.log("convertToWidget", w);
 						toWidget.push({
 							content: `Convert ${w.name} to widget`,
 							callback: () => convertToWidget(this, w),
 						});
 					} else {
+						// 否则这里的 w.type 会是原来的类型（number 之类的...）
 						const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
+						console.log("convertToInput", w);
+						// 这里的 config 其实就是字段的类型定义 [ "FLOAT", { "default_input": true } ]
+
+						// 检查输入的类型是否可以转换成小部件
 						if (isConvertableWidget(w, config)) {
 							toInput.push({
 								content: `Convert ${w.name} to input`,
@@ -172,9 +190,6 @@ app.registerExtension({
 		// 首先保存原始的 onConfigure 回调函数，然后重写 onConfigure 回调函数，调用原始的 onConfigure 回调函数并保存返回值
 		nodeType.prototype.onConfigure = function () {
 			const r = origOnConfigure ? origOnConfigure.apply(this, arguments) : undefined;
-
-			const s = JSON.stringify(this.serialize());
-			console.log(s);
 			if (this.inputs) {
 				for (const input of this.inputs) {
 					if (input.widget) {

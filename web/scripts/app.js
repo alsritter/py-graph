@@ -456,7 +456,6 @@ export class ComfyApp {
 
 		const missingNodeTypes = [];
 		for (let n of graphData.nodes) {
-			n.properties = { isLoad: true, ...n.properties }; // 标识这个是加载出来的 Node，避免创建的时候误判
 			// Find missing node types
 			if (!(n.type in LiteGraph.registered_node_types)) {
 				missingNodeTypes.push(n.type);
