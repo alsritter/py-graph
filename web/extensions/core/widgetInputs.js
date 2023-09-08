@@ -8,8 +8,24 @@ function isConvertableWidget(widget, config) {
 	return VALID_TYPES.includes(widget.type) || VALID_TYPES.includes(config[0]);
 }
 
+// 为转成窗口之前这个值是
+// {
+// 	"type": "number",
+// 	"name": "operand2",
+// 	"value": 0,
+// 	"options": {
+// 			"min": 0,
+// 			"max": 2048,
+// 			"step": 5,
+// 			"defaultInput": true
+// 	},
+// 	"last_y": 26
+// }
+
 /**
- * Converted widget representing the first operand.
+ * 这个 Widget 类型是 litegraph 的 Widget 类型的子集。
+ * https://vscode.dev/github/alsritter/py-graph/blob/main/web/types/litegraph.d.ts#L54
+ * 
  * @typedef {Object} Widget
  * @property {string} type e.g. "converted-widget"
  * @property {string} name e.g. "operand1"
