@@ -1,4 +1,6 @@
 
+import { api } from "./api.js";
+
 /**
  * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。
  *
@@ -228,7 +230,6 @@ function dragElement(dragEl, settings) {
     },
   });
 }
-
 
 /**
  * 表示一个对话框的基类，用于创建和控制一个可自定义内容的对话框。
@@ -554,10 +555,22 @@ class ComfySettingsDialog extends ComfyDialog {
 }
 
 export class ComfyUI {
+  /**
+   * Represents the UI of the application.
+   * @constructor
+   * @param {object} app - The main application object.
+   */
   constructor(app) {
     this.app = app;
     this.dialog = new ComfyDialog();
     this.settings = new ComfySettingsDialog();
+    this.queue = new ComfyList("Queue");
+    this.history = new ComfyList("History");
+
+    api.addEventListener("status", () => {
+      this.queue.update();
+      this.history.update();
+    });
 
     // 创建菜单容器
     this.menuContainer = $el("div.comfy-menu", { parent: document.body }, [
@@ -618,7 +631,7 @@ export class ComfyUI {
             id: "autoQueueCheckbox",
             type: "checkbox",
             checked: false,
-            title: "automatically queue prompt when the queue size hits 0",
+            title: "automatically queue runner when the queue size hits 0",
           }),
         ]),
       ]),
@@ -645,9 +658,129 @@ export class ComfyUI {
         status.exec_info.queue_remaining == 0 &&
         document.getElementById("autoQueueCheckbox").checked
       ) {
-        app.queuePrompt(0, this.batchCount);
+        app.queueRunner(0, this.batchCount);
       }
       this.lastQueueSize = status.exec_info.queue_remaining;
+    }
+  }
+}
+
+/**
+ * Represents a list of items with a custom remove action and load action.
+ */
+class ComfyList {
+  #type; // The type of the list.
+  #text; // The text to display in the list.
+
+  /**
+   * Creates a new ComfyList instance.
+   * @param {string} text - The text to display in the list.
+   * @param {string} [type] - The type of the list. Defaults to the lowercase version of the text.
+   */
+  constructor(text, type) {
+    this.#text = text;
+    this.#type = type || text.toLowerCase();
+    this.element = $el("div.comfy-list");
+    this.element.style.display = "none";
+  }
+
+  /**
+   * Gets whether the list is currently visible.
+   * @returns {boolean} - True if the list is visible, false otherwise.
+   */
+  get visible() {
+    return this.element.style.display !== "none";
+  }
+
+  /**
+   * Loads the items in the list from the API.
+   */
+  async load() {
+    const items = await api.getItems(this.#type);
+    this.element.replaceChildren(
+      ...Object.keys(items).flatMap((section) => [
+        $el("h4", {
+          textContent: section,
+        }),
+        $el("div.comfy-list-items", [
+          ...items[section].map((item) => {
+            // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
+            const removeAction = item.remove || {
+              name: "Delete",
+              cb: () => api.deleteItem(this.#type, item.prompt[1]),
+            };
+            return $el("div", { textContent: item.prompt[0] + ": " }, [
+              $el("button", {
+                textContent: "Load",
+                onclick: () => {
+                  app.loadGraphData(item.prompt[3].extra_pnginfo.workflow);
+                  if (item.outputs) {
+                    app.nodeOutputs = item.outputs;
+                  }
+                },
+              }),
+              $el("button", {
+                textContent: removeAction.name,
+                onclick: async () => {
+                  await removeAction.cb();
+                  await this.update();
+                },
+              }),
+            ]);
+          }),
+        ]),
+      ]),
+      $el("div.comfy-list-actions", [
+        $el("button", {
+          textContent: "Clear " + this.#text,
+          onclick: async () => {
+            await api.clearItems(this.#type);
+            await this.load();
+          },
+        }),
+        $el("button", { textContent: "Refresh", onclick: () => this.load() }),
+      ])
+    );
+  }
+
+  /**
+   * Updates the list if it is currently visible.
+   */
+  async update() {
+    if (this.visible) {
+      await this.load();
+    }
+  }
+
+  /**
+   * Shows the list.
+   */
+  async show() {
+    this.element.style.display = "block";
+    this.button.textContent = "Close";
+
+    await this.load();
+  }
+
+  /**
+   * Hides the list.
+   */
+  hide() {
+    this.element.style.display = "none";
+    this.button.textContent = "View " + this.#text;
+  }
+
+  /**
+   * Toggles the visibility of the list.
+   * @returns {boolean} - True if the list is now visible, false otherwise.
+   */
+  toggle() {
+    if (this.visible) {
+      this.hide();
+      return false;
+    } else {
+      this.show();
+      return true;
     }
   }
 }

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+import time
 
 class BaseNode(ABC):
     # @classmethod：将方法转换为类方法，即该方法可以通过类名直接调用，而不需要先创建类的实例。
@@ -119,6 +119,7 @@ class ValueInputNode(BaseNode):
     CATEGORY = "Input"
 
     def execute(self, value):
+        time.sleep(10)
         return (value,)
 
 
@@ -135,6 +136,7 @@ class OutputToStdoutNode(BaseNode):
     OUTPUT_NODE = True
 
     def execute(self, value):
+        # Sleep 1s
         print("OutPut: ", value)
         return ()
 
