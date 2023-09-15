@@ -1,5 +1,9 @@
 class ComfyApi extends EventTarget {
 	#registered = new Set();
+	api_base = ""; // The base path of the api
+	api_host = ""; // The host of the api
+	socket: WebSocket  = null; // The websocket connection
+	clientId = ""; // The client id of the current session
 
 	constructor() {
 		super();
@@ -11,11 +15,11 @@ class ComfyApi extends EventTarget {
 		return this.api_base + route;
 	}
 
-	fetchApi(route, options) {
+	fetchApi(route: string, options = {}) {
 		return fetch(this.apiURL(route), options);
 	}
 
-	addEventListener(type, callback, options) {
+	addEventListener(type, callback, options= {}) {
 		super.addEventListener(type, callback, options);
 		this.#registered.add(type);
 	}
@@ -24,14 +28,14 @@ class ComfyApi extends EventTarget {
 	 * init sockets and realtime updates
 	 */
 	init() {
-		this.#createSocket();
+		this.#createSocket(true);
 	}
 
 	/**
  * Creates and connects a WebSocket for realtime updates
  * @param {boolean} isReconnect If the socket is connection is a reconnect attempt
  */
-	#createSocket(isReconnect) {
+	#createSocket(isReconnect: boolean) {
 		if (this.socket) {
 			return;
 		}
@@ -177,11 +181,13 @@ class ComfyApi extends EventTarget {
 	 * @param {number} number The index at which to queue the runner, passing -1 will insert the runner at the front of the queue
 	 * @param {object} runner The runner data to queue
 	 */
-	async queueRunner(number, { output, workflow }) {
+	async queueRunner(number: number, { output, workflow }) {
 		const body = {
 			client_id: this.clientId,
 			runner: output,
 			extra_data: { extra_pnginfo: { workflow } },
+			front: false,
+			number: 0,
 		};
 
 		if (number === -1) {

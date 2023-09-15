@@ -1,33 +1,56 @@
 import { api } from "./api.js";
 import { ComfyWidgets } from "./widgets.js";
 import { ComfyUI, $el } from "./ui.js";
+import type { ComfyExtension } from "../types/comfy.js";
+import { defaultGraph } from "./defaultGraph.js";
+import{ LGraph, LGraphCanvas, LiteGraph } from "../types/litegraph.js";
+
 
 export class ComfyApp {
 	/**
 	 * List of entries to queue
 	 * @type {{number: number, batchCount: number}[]}
 	 */
-	#queueItems = [];
+	#queueItems: { number: number; batchCount: number; }[] = [];
 
 	/**
 	 * If the queue is currently being processed
 	 * @type {boolean}
 	 */
-	#processingQueue = false;
+	#processingQueue: boolean = false;
+
+	ui: ComfyUI;
+
+	/**
+	 * List of extensions that are registered with the app
+	 */
+	extensions: ComfyExtension[];
+
+	/**
+	 * Stores the execution output data for each node
+	 */
+	nodeOutputs: Record<string, any>;
+
+	/**
+	 * graph canvas element 
+	 */
+	canvasEl: HTMLCanvasElement;
+
+	/**
+	 * litegraph
+	 */
+	graph: LGraph;
+
+	/**
+	 * litegraph canvas context
+	 */
+	canvas: LGraphCanvas;
+
+	ctx: CanvasRenderingContext2D;
 
 	constructor() {
 		this.ui = new ComfyUI(this);
-
-		/**
-		 * List of extensions that are registered with the app
-		 * @type {ComfyExtension[]}
-		 */
 		this.extensions = [];
-
-		/**
-		 * Stores the execution output data for each node
-		 * @type {Record<string, any>}
-		 */
 		this.nodeOutputs = {};
 	}
 
@@ -40,14 +63,16 @@ export class ComfyApp {
 		const mainCanvas = document.createElement("canvas")
 		mainCanvas.style.touchAction = "none"
 		const canvasEl = (this.canvasEl = Object.assign(mainCanvas, { id: "graph-canvas" }));
-		canvasEl.tabIndex = "1";
+		canvasEl.tabIndex = 1;
 		document.body.prepend(canvasEl);
 
 		this.graph = new LGraph();
 		const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
 		this.ctx = canvasEl.getContext("2d");
 
+		// @ts-ignore
 		LiteGraph.release_link_on_empty_shows_menu = true;
+		// @ts-ignore
 		LiteGraph.alt_drag_do_clone_nodes = true;
 
 		this.graph.start();
@@ -84,7 +109,7 @@ export class ComfyApp {
 
 		// We failed to restore a workflow so load the default
 		if (!restored) {
-			this.loadGraphData();
+			this.loadGraphData(null);
 		}
 
 		// Save current workflow automatically
@@ -107,7 +132,7 @@ export class ComfyApp {
 	}
 
 
-	async registerNodesFromDefs(defs) {
+	async registerNodesFromDefs(defs: { [x: string]: any; }) {
 		await this.#invokeExtensionsAsync("addCustomNodeDefs", defs);
 
 		// Generate list of known widgets
@@ -223,7 +248,7 @@ export class ComfyApp {
 	 * @param  {any[]} args Any arguments to pass to the callback
 	 * @returns
 	 */
-	#invokeExtensions(method, ...args) {
+	#invokeExtensions(method: string, ...args: any) {
 		let results = [];
 		for (const ext of this.extensions) {
 			if (method in ext) {

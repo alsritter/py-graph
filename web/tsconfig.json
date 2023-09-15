@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+    "outDir": "./built",
+		"baseUrl": ".",
+		"paths": {
+			"/*": ["./*"]
+		},
+		"lib": [ "dom", "es5", "es2015.promise" ,"es2015", "es2017"],
+		"module": "esnext",
+    "target": "es6",
+		"typeRoots": ["./types"],
+	},
+	"include": ["./**/*"]
+}

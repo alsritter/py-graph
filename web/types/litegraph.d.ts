@@ -15,7 +15,7 @@ export type SlotShape =
     | typeof LiteGraph.BOX_SHAPE
     | typeof LiteGraph.CIRCLE_SHAPE
     | typeof LiteGraph.ARROW_SHAPE
-    | typeof LiteGraph.SQUARE_SHAPE
+    | typeof LiteGraph.GRID_SHAPE
     | number; // For custom shapes
 
 /** https://github.com/jagenjo/litegraph.js/tree/master/guides#node-slots */
@@ -145,9 +145,7 @@ export type ContextMenuEventListener = (
 
 export const LiteGraph: {
     VERSION: number;
-
     CANVAS_GRID_SIZE: number;
-
     NODE_TITLE_HEIGHT: number;
     NODE_TITLE_TEXT_Y: number;
     NODE_SLOT_HEIGHT: number;
@@ -157,6 +155,7 @@ export const LiteGraph: {
     NODE_COLLAPSED_RADIUS: number;
     NODE_COLLAPSED_WIDTH: number;
     NODE_TITLE_COLOR: string;
+    NODE_SELECTED_TITLE_COLOR: string;
     NODE_TEXT_SIZE: number;
     NODE_TEXT_COLOR: string;
     NODE_SUBTEXT_SIZE: number;
@@ -164,169 +163,186 @@ export const LiteGraph: {
     NODE_DEFAULT_BGCOLOR: string;
     NODE_DEFAULT_BOXCOLOR: string;
     NODE_DEFAULT_SHAPE: string;
+    NODE_BOX_OUTLINE_COLOR: string;
     DEFAULT_SHADOW_COLOR: string;
     DEFAULT_GROUP_FONT: number;
-
+    WIDGET_BGCOLOR: string;
+    WIDGET_OUTLINE_COLOR: string;
+    WIDGET_TEXT_COLOR: string;
+    WIDGET_SECONDARY_TEXT_COLOR: string;
     LINK_COLOR: string;
     EVENT_LINK_COLOR: string;
     CONNECTING_LINK_COLOR: string;
-
-    MAX_NUMBER_OF_NODES: number; //avoid infinite loops
-    DEFAULT_POSITION: Vector2; //default node position
-    VALID_SHAPES: ["default", "box", "round", "card"]; //,"circle"
-
-    //shapes are used for nodes but also for slots
-    BOX_SHAPE: 1;
-    ROUND_SHAPE: 2;
-    CIRCLE_SHAPE: 3;
-    CARD_SHAPE: 4;
-    ARROW_SHAPE: 5;
-    SQUARE_SHAPE: 6;
-
-    //enums
-    INPUT: 1;
-    OUTPUT: 2;
-
-    EVENT: -1; //for outputs
-    ACTION: -1; //for inputs
-
-    ALWAYS: 0;
-    ON_EVENT: 1;
-    NEVER: 2;
-    ON_TRIGGER: 3;
-
-    UP: 1;
-    DOWN: 2;
-    LEFT: 3;
-    RIGHT: 4;
-    CENTER: 5;
-
-    STRAIGHT_LINK: 0;
-    LINEAR_LINK: 1;
-    SPLINE_LINK: 2;
-
-    NORMAL_TITLE: 0;
-    NO_TITLE: 1;
-    TRANSPARENT_TITLE: 2;
-    AUTOHIDE_TITLE: 3;
-
+    MAX_NUMBER_OF_NODES: number;
+    DEFAULT_POSITION: number[];
+    VALID_SHAPES: string[];
+    BOX_SHAPE: number;
+    ROUND_SHAPE: number;
+    CIRCLE_SHAPE: number;
+    CARD_SHAPE: number;
+    ARROW_SHAPE: number;
+    GRID_SHAPE: number;
+    INPUT: number;
+    OUTPUT: number;
+    EVENT: number;
+    ACTION: number;
+    NODE_MODES: string[];
+    NODE_MODES_COLORS: string[];
+    ALWAYS: number;
+    ON_EVENT: number;
+    NEVER: number;
+    ON_TRIGGER: number;
+    UP: number;
+    DOWN: number;
+    LEFT: number;
+    RIGHT: number;
+    CENTER: number;
+    LINK_RENDER_MODES: string[];
+    STRAIGHT_LINK: number;
+    LINEAR_LINK: number;
+    SPLINE_LINK: number;
+    NORMAL_TITLE: number;
+    NO_TITLE: number;
+    TRANSPARENT_TITLE: number;
+    AUTOHIDE_TITLE: number;
+    VERTICAL_LAYOUT: string;
+    proxy: any;
     node_images_path: string;
-
     debug: boolean;
     catch_exceptions: boolean;
     throw_errors: boolean;
-    /** if set to true some nodes like Formula would be allowed to evaluate code that comes from unsafe sources (like node configuration), which could lead to exploits */
     allow_scripts: boolean;
-    /** node types by string */
-    registered_node_types: Record<string, LGraphNodeConstructor>;
-    /** used for dropping files in the canvas */
-    node_types_by_file_extension: Record<string, LGraphNodeConstructor>;
-    /** node types by class name */
-    Nodes: Record<string, LGraphNodeConstructor>;
-
-    /** used to add extra features to the search box */
-    searchbox_extras: Record<
-        string,
-        {
-            data: { outputs: string[][]; title: string };
-            desc: string;
-            type: string;
-        }
-    >;
-
-    createNode<T extends LGraphNode = LGraphNode>(type: string): T;
-    /** Register a node class so it can be listed when the user wants to create a new one */
-    registerNodeType(type: string, base: { new (): LGraphNode }): void;
-    /** removes a node type from the system */
-    unregisterNodeType(type: string): void;
-    /** Removes all previously registered node's types. */
-    clearRegisteredTypes(): void;
+    registered_node_types: {};
+    node_types_by_file_extension: {};
+    Nodes: {};
+    Globals: {};
+    searchbox_extras: {};
+    auto_sort_node_types: boolean;
+    node_box_coloured_when_on: boolean;
+    node_box_coloured_by_mode: boolean;
+    dialog_close_on_mouse_leave: boolean;
+    dialog_close_on_mouse_leave_delay: number;
+    shift_click_do_break_link_from: boolean;
+    click_do_break_link_to: boolean;
+    search_hide_on_mouse_leave: boolean;
+    search_filter_enabled: boolean;
+    search_show_all_on_open: boolean;
+    auto_load_slot_types: boolean;
+    registered_slot_in_types: {};
+    registered_slot_out_types: {};
+    slot_types_in: any[];
+    slot_types_out: any[];
+    slot_types_default_in: any[];
+    slot_types_default_out: any[];
+    alt_drag_do_clone_nodes: boolean;
+    do_add_triggers_slots: boolean;
+    allow_multi_output_for_events: boolean;
+    middle_click_slot_add_default_node: boolean;
+    release_link_on_empty_shows_menu: boolean;
+    pointerevents_method: string;
+    ctrl_shift_v_paste_connect_unselected_outputs: boolean;
+    use_uuids: boolean;
     /**
-     * Create a new node type by passing a function, it wraps it with a proper class and generates inputs according to the parameters of the function.
+     * Register a node class so it can be listed when the user wants to create a new one
+     * @method registerNodeType
+     * @param {String} type name of the node and path
+     * @param {Class} base_class class containing the structure of a node
+     */
+    registerNodeType: (type: any, base_class: any) => void;
+    /**
+     * removes a node type from the system
+     * @method unregisterNodeType
+     * @param {String|Object} type name of the node or the node constructor itself
+     */
+    unregisterNodeType: (type: any) => void;
+    /**
+    * Save a slot type and his node
+    * @method registerSlotType
+    * @param {String|Object} type name of the node or the node constructor itself
+    * @param {String} slot_type name of the slot type (variable type), eg. string, number, array, boolean, ..
+    */
+    registerNodeAndSlotType: (type: any, slot_type: any, out: any) => void;
+    /**
+     * Create a new nodetype by passing a function, it wraps it with a proper class and generates inputs according to the parameters of the function.
      * Useful to wrap simple methods that do not require properties, and that only process some input to generate an output.
-     * @param name node name with namespace (p.e.: 'math/sum')
-     * @param func
-     * @param param_types an array containing the type of every parameter, otherwise parameters will accept any type
-     * @param return_type string with the return type, otherwise it will be generic
-     * @param properties properties to be configurable
+     * @method wrapFunctionAsNode
+     * @param {String} name node name with namespace (p.e.: 'math/sum')
+     * @param {Function} func
+     * @param {Array} param_types [optional] an array containing the type of every parameter, otherwise parameters will accept any type
+     * @param {String} return_type [optional] string with the return type, otherwise it will be generic
+     * @param {Object} properties [optional] properties to be configurable
      */
-    wrapFunctionAsNode(
-        name: string,
-        func: (...args: any[]) => any,
-        param_types?: string[],
-        return_type?: string,
-        properties?: object
-    ): void;
-
+    wrapFunctionAsNode: (name: any, func: any, param_types: any, return_type: any, properties: any) => void;
     /**
-     * Adds this method to all node types, existing and to be created
-     * (You can add it to LGraphNode.prototype but then existing node types wont have it)
+     * Removes all previously registered node's types
      */
-    addNodeMethod(name: string, func: (...args: any[]) => any): void;
-
+    clearRegisteredTypes: () => void;
+    /**
+     * Adds this method to all nodetypes, existing and to be created
+     * (You can add it to LGraphNode.prototype but then existing node types wont have it)
+     * @method addNodeMethod
+     * @param {Function} func
+     */
+    addNodeMethod: (name: any, func: any) => void;
     /**
      * Create a node of a given type with a name. The node is not attached to any graph yet.
-     * @param type full name of the node class. p.e. "math/sin"
-     * @param name a name to distinguish from other nodes
-     * @param options to set options
+     * @method createNode
+     * @param {String} type full name of the node class. p.e. "math/sin"
+     * @param {String} name a name to distinguish from other nodes
+     * @param {Object} options to set options
      */
-    createNode<T extends LGraphNode>(
-        type: string,
-        title: string,
-        options: object
-    ): T;
-
+    createNode: (type: any, title: any, options: any) => any;
     /**
      * Returns a registered node type with a given name
-     * @param type full name of the node class. p.e. "math/sin"
+     * @method getNodeType
+     * @param {String} type full name of the node class. p.e. "math/sin"
+     * @return {Class} the node class
      */
-    getNodeType<T extends LGraphNode>(type: string): LGraphNodeConstructor<T>;
-
+    getNodeType: (type: any) => any;
     /**
      * Returns a list of node types matching one category
-     * @method getNodeTypesInCategory
+     * @method getNodeType
      * @param {String} category category name
-     * @param {String} filter only nodes with ctor.filter equal can be shown
      * @return {Array} array with all the node classes
      */
-    getNodeTypesInCategory(
-        category: string,
-        filter: string
-    ): LGraphNodeConstructor[];
-
+    getNodeTypesInCategory: (category: any, filter: any) => any[];
     /**
      * Returns a list with all the node type categories
      * @method getNodeTypesCategories
      * @param {String} filter only nodes with ctor.filter equal can be shown
      * @return {Array} array with all the names of the categories
-     */                           
-    getNodeTypesCategories(filter: string): string[];
-
-    /** debug purposes: reloads all the js scripts that matches a wildcard */
-    reloadNodes(folder_wildcard: string): void;
-
-    getTime(): number;
-    LLink: typeof LLink;
-    LGraph: typeof LGraph;
-    DragAndScale: typeof DragAndScale;
-    compareObjects(a: object, b: object): boolean;
-    distance(a: Vector2, b: Vector2): number;
-    colorToString(c: string): string;
-    isInsideRectangle(
-        x: number,
-        y: number,
-        left: number,
-        top: number,
-        width: number,
-        height: number
-    ): boolean;
-    growBounding(bounding: Vector4, x: number, y: number): Vector4;
-    isInsideBounding(p: Vector2, bb: Vector4): boolean;
-    hex2num(hex: string): [number, number, number];
-    num2hex(triplet: [number, number, number]): string;
-    ContextMenu: typeof ContextMenu;
-    extendClass<A, B>(target: A, origin: B): A & B;
-    getParameterNames(func: string): string[];
+     */
+    getNodeTypesCategories: (filter: any) => any[];
+    reloadNodes: (folder_wildcard: any) => void;
+    cloneObject: (obj: any, target: any) => any;
+    uuidv4: () => any;
+    /**
+     * Returns if the types of two slots are compatible (taking into account wildcards, etc)
+     * @method isValidConnection
+     * @param {String} type_a
+     * @param {String} type_b
+     * @return {Boolean} true if they can be connected
+     */
+    isValidConnection: (type_a: any, type_b: any) => boolean;
+    /**
+     * Register a string in the search box so when the user types it it will recommend this node
+     * @method registerSearchboxExtra
+     * @param {String} node_type the node recommended
+     * @param {String} description text to show next to it
+     * @param {Object} data it could contain info of how the node should be configured
+     * @return {Boolean} true if they can be connected
+     */
+    registerSearchboxExtra: (node_type: any, description: any, data: any) => void;
+    /**
+     * Wrapper to load files (from url using fetch or from file using FileReader)
+     * @method fetchFile
+     * @param {String|File|Blob} url the url of the file (or the file itself)
+     * @param {String} type an string to know how to fetch it: "text","arraybuffer","json","blob"
+     * @param {Function} on_complete callback(data)
+     * @param {Function} on_error in case of an error
+     * @return {FileReader|Promise} returns the object used to
+     */
+    fetchFile: (url: any, type: any, on_complete: any, on_error: any) => void | Promise<void>;
 };
 
 export type serializedLGraph<
@@ -698,6 +714,8 @@ export declare class LGraphNode {
     getInputInfo(
         slot: number
     ): { link: number; name: string; type: string | 0 } | null;
+    /** Returns the link info in the connection of an input slot */
+    getInputLink(slot: number): LLink | null;
     /** returns the node connected in the input slot */
     getInputNode(slot: number): LGraphNode | null;
     /** returns the value of an input with this name, otherwise checks if there is a property with that name */
@@ -729,6 +747,8 @@ export declare class LGraphNode {
      * @param link_id in case you want to trigger and specific output link in a slot
      */
     clearTriggeredSlot(slot: number, link_id?: number): void;
+    /** changes node size and triggers callback */
+    setSize(size: Vector2): void;
     /**
      * add a new property to this node
      * @param name
@@ -801,9 +821,10 @@ export declare class LGraphNode {
         direction: string;
         links: null;
     };
-    setValue(v: any): void;
-    /** computes the size of a node according to its inputs and output slots */
-    computeSize(): [number, number];
+    /** computes the minimum size of a node according to its inputs and output slots */
+    computeSize(minHeight?: Vector2): Vector2;
+    /** returns all the info available about a property of this node */
+    getPropertyInfo(property: string): object;
     /**
      * https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#node-widgets
      * @return created widget
@@ -1487,20 +1508,4 @@ declare class ContextMenu {
     getFirstEvent(): void;
 }
 
-declare global {
-    interface CanvasRenderingContext2D {
-        /** like rect but rounded corners */
-        roundRect(
-            x: number,
-            y: number,
-            width: number,
-            height: number,
-            radius: number,
-            radiusLow: number
-        ): void;
-    }
-
-    interface Math {
-        clamp(v: number, min: number, max: number): number;
-    }
-}
+declare function clamp(v: number, min: number, max: number): number;
