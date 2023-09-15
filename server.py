@@ -1,5 +1,7 @@
 from aiohttp import web
 from typing import Optional, Dict
+from io import BytesIO
+from PIL import Image, ImageOps
 import aiohttp
 import asyncio
 import uuid
@@ -15,6 +17,7 @@ import execution_queue
 
 class BinaryEventTypes:
     PREVIEW_TEXT = 1
+    UNENCODED_PREVIEW_IMAGE = 2
 
 
 async def send_socket_catch_exception(function, message):
@@ -182,7 +185,6 @@ class PyGraphServer:
         @routes.post("/execute")
         async def execute(request: web.Request):
             json_data = await request.json()
-            print(json_data)
 
             if "number" in json_data:
                 number = float(json_data["number"])
@@ -259,9 +261,16 @@ class PyGraphServer:
             return info
 
     async def send(self, event, data, sid=None):
-        if event == BinaryEventTypes.PREVIEW_TEXT:
-            await self.send_bytes(data, sid=sid)
-
+        if event == BinaryEventTypes.UNENCODED_PREVIEW_IMAGE:
+            await self.send_image(data, sid=sid)
+        # isinstance() 是 Python 内置函数之一，用于检查一个对象是否是指定类或其子类的实例
+        # isinstance(data, (bytes, bytearray)) 检查 data 是否为 bytes 或 bytearray 类型
+        elif isinstance(data, (bytes, bytearray)):
+            await self.send_bytes(event, data, sid)
+        else:
+            await self.send_json(event, data, sid)
+    
+    # 用于发送二进制数据的函数
     async def send_bytes(
         self, event: int, data: bytes, sid: Optional[str] = None
     ) -> None:
@@ -271,6 +280,51 @@ class PyGraphServer:
                 await send_socket_catch_exception(ws.send_bytes, message)
         elif sid in self.sockets:
             await send_socket_catch_exception(self.sockets[sid].send_bytes, message)
+
+    # 用于发送 image 数据的函数
+    async def send_image(self, image_data, sid=None):
+        image_type = image_data[0]
+        image = image_data[1]
+        max_size = image_data[2]
+        if max_size is not None:
+            if hasattr(Image, 'Resampling'):
+                resampling = Image.Resampling.BILINEAR
+            else:
+                resampling = Image.ANTIALIAS
+
+            image = ImageOps.contain(image, (max_size, max_size), resampling)
+        type_num = 1
+        if image_type == "JPEG":
+            type_num = 1
+        elif image_type == "PNG":
+            type_num = 2
+
+        bytesIO = BytesIO()
+        # 这里的 struct.pack() 函数用于将一个整数打包为字节流。
+        header = struct.pack(">I", type_num)
+        bytesIO.write(header)
+        image.save(bytesIO, format=image_type, quality=95, compress_level=4)
+        preview_bytes = bytesIO.getvalue()
+        await self.send_bytes(BinaryEventTypes.PREVIEW_IMAGE, preview_bytes, sid=sid)
+    
+    # 用于发送 JSON 数据的函数
+    async def send_bytes(self, event, data, sid=None):
+        message = self.encode_bytes(event, data)
+
+        if sid is None:
+            for ws in self.sockets.values():
+                await send_socket_catch_exception(ws.send_bytes, message)
+        elif sid in self.sockets:
+            await send_socket_catch_exception(self.sockets[sid].send_bytes, message)
+
+    async def send_json(self, event, data, sid=None):
+        message = {"type": event, "data": data}
+
+        if sid is None:
+            for ws in self.sockets.values():
+                await send_socket_catch_exception(ws.send_json, message)
+        elif sid in self.sockets:
+            await send_socket_catch_exception(self.sockets[sid].send_json, message)
 
     def get_queue_info(self):
         runner_info = {}

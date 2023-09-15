@@ -90,6 +90,8 @@ export class ComfyApp {
 		// Save current workflow automatically
 		setInterval(() => localStorage.setItem("workflow", JSON.stringify(this.graph.serialize())), 1000);
 
+		this.#addApiUpdateHandlers();
+
 		await this.#invokeExtensionsAsync("setup");
 	}
 
@@ -254,7 +256,7 @@ export class ComfyApp {
 		this.extensions.push(extension);
 	}
 
-	#formatPromptError(error) {
+	#formatRunnerError(error) {
 		if (error == null) {
 			return "(unknown error)"
 		}
@@ -279,10 +281,87 @@ export class ComfyApp {
 		return "(unknown error)"
 	}
 
+	#formatExecutionError(error) {
+		if (error == null) {
+			return "(unknown error)"
+		}
+
+		const traceback = error.traceback.join("")
+		const nodeId = error.node_id
+		const nodeType = error.node_type
+
+		return `Error occurred when executing ${nodeType}:\n\n${error.exception_message}\n\n${traceback}`
+	}
+
+	/**
+	 * Handles updates from the API socket
+	 */
+	#addApiUpdateHandlers() {
+		api.addEventListener("status", ({ detail }) => {
+			this.ui.setStatus(detail);
+		});
+
+		api.addEventListener("reconnecting", () => {
+			this.ui.dialog.show("Reconnecting...");
+		});
+
+		api.addEventListener("reconnected", () => {
+			this.ui.dialog.close();
+		});
+
+		api.addEventListener("progress", ({ detail }) => {
+			this.progress = detail;
+			// Clear the preview image for the node
+			this.graph.setDirtyCanvas(true, false);
+		});
+
+		api.addEventListener("executing", ({ detail }) => {
+			this.progress = null;
+			this.runningNodeId = detail;
+			// Clear the preview image for the node
+			this.graph.setDirtyCanvas(true, false);
+			delete this.nodePreviewImages[this.runningNodeId]
+		});
+
+		api.addEventListener("executed", ({ detail }) => {
+			this.nodeOutputs[detail.node] = detail.output;
+			const node = this.graph.getNodeById(detail.node);
+			if (node) {
+				if (node.onExecuted)
+					node.onExecuted(detail.output);
+			}
+		});
+
+		api.addEventListener("execution_start", ({ detail }) => {
+			this.runningNodeId = null;
+			this.lastExecutionError = null
+		});
+
+		api.addEventListener("execution_error", ({ detail }) => {
+			this.lastExecutionError = detail;
+			const formattedError = this.#formatExecutionError(detail);
+			this.ui.dialog.show(formattedError);
+			this.canvas.draw(true, true);
+		});
+
+		api.addEventListener("b_preview", ({ detail }) => {
+			const id = this.runningNodeId
+			if (id == null)
+				return;
+
+			const blob = detail
+			const blobUrl = URL.createObjectURL(blob)
+			this.nodePreviewImages[id] = [blobUrl]
+		});
+
+		api.init();
+	}
+
 	/**
 	 * 执行当前图形工作流。
 	 */
 	async queueRunner(number, batchCount = 1) {
+		console.log("Queueing runner", number, batchCount);
 		this.#queueItems.push({ number, batchCount });
 
 		// Only have one action process the items so each one gets a unique seed correctly
@@ -307,7 +386,7 @@ export class ComfyApp {
 							this.canvas.draw(true, true);
 						}
 					} catch (error) {
-						const formattedError = this.#formatPromptError(error)
+						const formattedError = this.#formatRunnerError(error)
 						this.ui.dialog.show(formattedError);
 						if (error.response) {
 							this.lastNodeErrors = error.response.node_errors;
@@ -460,12 +539,9 @@ export class ComfyApp {
 			if (!(n.type in LiteGraph.registered_node_types)) {
 				missingNodeTypes.push(n.type);
 			}
-
-			console.log("Loading node", n);
 		}
 
 		try {
-			console.log("Loading graph data", graphData);
 			this.graph.configure(graphData);
 		} catch (error) {
 			let errorHint = [];
