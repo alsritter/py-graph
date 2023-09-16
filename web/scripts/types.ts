@@ -87,7 +87,7 @@ export type CustomWidget = Merge<
 export type CustomGraphNode = Merge<
   LGraphNode,
   {
-    imgs?: string[]
+    imgs?: Record<string, any>
     inputHeight?: number
     widgets?: CustomWidget[]
 
@@ -101,6 +101,38 @@ export type CustomGraphNode = Merge<
 
     addCustomWidget<T extends CustomWidget>(customWidget: T): T
 
+    setSizeForImage?: () => void
+
+    callback?: (...argArray: any[]) => void
+
+    onDrawBackground?: (ctx: CanvasRenderingContext2D) => void
+
+    /**
+     * 如果是存前端的 Node 可以添加这个回调
+     * @param event
+     * @returns
+     */
+    onExecuted?: (event: any) => void
+
+    /**
+     * On drop upload files
+     * @param event
+     * @returns
+     */
+    onDragDrop?: (event: DragEvent) => boolean
+
+    /**
+     * Add handler to check if an image is being dragged over our node
+     * @param event
+     * @returns
+     */
+    onDragOver?: (event: DragEvent) => boolean
+
+    /**
+     * 重新计算节点的高度
+     * @param size
+     * @returns
+     */
     onResize?: (size?: number) => void
   }
 >

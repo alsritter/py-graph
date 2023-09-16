@@ -11,7 +11,7 @@
     "declaration": true,             // 生成声明文件
     "declarationDir": "./types",     // 声明文件输出目录
     "typeRoots": ["./types"],        // 声明文件的根目录
-    "lib": ["dom", "es5", "es2015.promise", "es2015", "es2017", "es2022"],           // 使用的 TypeScript 标准库
+    "lib": ["dom", "es5", "es2015.promise", "es2015", "es2017", "es2022", "DOM.Iterable" ],
     "allowJs": true,                 // 允许编译 JavaScript 文件
     "checkJs": true,                 // 启用对 JavaScript 文件的类型检查
     "isolatedModules": true          // 确保每个文件都是独立的模块

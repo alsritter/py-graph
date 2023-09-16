@@ -2,6 +2,7 @@ import { api } from './api.js'
 import { ComfyWidgets } from './widgets.js'
 import { ComfyUI, $el } from './ui.js'
 import type { ComfyExtension } from '../types/comfy.js'
+import { CustomGraphNode, CustomWidget, customWidgetTypes } from './types'
 import { defaultGraph } from './defaultGraph.js'
 import {
   IWidget,
@@ -65,13 +66,15 @@ export class ComfyApp {
 
   progress: { value: number; max: number }
 
-	dragOverNode: LGraphNode
+  dragOverNode: CustomGraphNode
 
-	logging: ComfyLogging
+  logging: ComfyLogging
+
+  nodePreviewImages: Record<string, string[]>
 
   constructor() {
     this.ui = new ComfyUI(this)
-		this.logging = new ComfyLogging(this);
+    this.logging = new ComfyLogging(this)
     this.extensions = []
     this.nodeOutputs = {}
   }
@@ -148,7 +151,7 @@ export class ComfyApp {
 
     this.#addDrawNodeHandler()
     this.#addApiUpdateHandlers()
-		this.#addDropHandler();
+    this.#addDropHandler()
 
     await this.#invokeExtensionsAsync('setup')
   }
@@ -248,6 +251,9 @@ export class ComfyApp {
       )
 
       node.prototype.comfyClass = nodeData.name
+
+			this.#addDrawBackgroundHandler(node);
+
       await this.#invokeExtensionsAsync('beforeRegisterNodeDef', node, nodeData)
       LiteGraph.registerNodeType(nodeId, node)
     }
@@ -407,7 +413,7 @@ export class ComfyApp {
 
     api.addEventListener('executed', ({ detail }) => {
       this.nodeOutputs[detail.node] = detail.output
-      const node = this.graph.getNodeById(detail.node)
+      const node = this.graph.getNodeById(detail.node) as CustomGraphNode
       if (node) {
         if (node.onExecuted) node.onExecuted(detail.output)
       }
@@ -487,7 +493,7 @@ export class ComfyApp {
       'dragover',
       (e) => {
         this.canvas.adjustMouseEvent(e)
-        const node = this.graph.getNodeOnPos(e.canvasX, e.canvasY)
+        const node = this.graph.getNodeOnPos(e.canvasX, e.canvasY) as CustomGraphNode
         if (node) {
           if (node.onDragOver && node.onDragOver(e)) {
             this.dragOverNode = node
@@ -503,6 +509,276 @@ export class ComfyApp {
       },
       false
     )
+  }
+
+  /**
+   * Adds Custom drawing logic for nodes
+   * e.g. Draws images and handles thumbnail navigation on nodes that output images
+   * @param {*} node The node to add the draw handler
+   */
+  #addDrawBackgroundHandler(node) {
+    const app = this
+
+    function getImageTop(node) {
+      let shiftY
+      if (node.imageOffset != null) {
+        shiftY = node.imageOffset
+      } else {
+        if (node.widgets?.length) {
+          const w = node.widgets[node.widgets.length - 1]
+          shiftY = w.last_y
+          if (w.computeSize) {
+            shiftY += w.computeSize()[1] + 4
+          } else if (w.computedHeight) {
+            shiftY += w.computedHeight
+          } else {
+            shiftY += LiteGraph.NODE_WIDGET_HEIGHT + 4
+          }
+        } else {
+          shiftY = node.computeSize()[1]
+        }
+      }
+      return shiftY
+    }
+
+    node.prototype.setSizeForImage = function () {
+      if (this.inputHeight) {
+        this.setSize(this.size)
+        return
+      }
+      const minHeight = getImageTop(this) + 220
+      if (this.size[1] < minHeight) {
+        this.setSize([this.size[0], minHeight])
+      }
+    }
+
+    node.prototype.onDrawBackground = function (ctx) {
+      if (!this.flags.collapsed) {
+        let imgURLs = []
+        let imagesChanged = false
+
+        const output = app.nodeOutputs[this.id + '']
+        if (output && output.images) {
+          if (this.images !== output.images) {
+            this.images = output.images
+            imagesChanged = true
+            imgURLs = imgURLs.concat(
+              output.images.map((params) => {
+                return api.apiURL(
+                  '/view?' +
+                    new URLSearchParams(params).toString() +
+                    app.getPreviewFormatParam()
+                )
+              })
+            )
+          }
+        }
+
+        const preview = app.nodePreviewImages[this.id + '']
+        if (this.preview !== preview) {
+          this.preview = preview
+          imagesChanged = true
+          if (preview != null) {
+            imgURLs.push(preview)
+          }
+        }
+
+        if (imagesChanged) {
+          this.imageIndex = null
+          if (imgURLs.length > 0) {
+            Promise.all(
+              imgURLs.map((src) => {
+                return new Promise((r) => {
+                  const img = new Image()
+                  img.onload = () => r(img)
+                  img.onerror = () => r(null)
+                  img.src = src
+                })
+              })
+            ).then((imgs) => {
+              if (
+                (!output || this.images === output.images) &&
+                (!preview || this.preview === preview)
+              ) {
+                this.imgs = imgs.filter(Boolean)
+                this.setSizeForImage?.()
+                app.graph.setDirtyCanvas(true)
+              }
+            })
+          } else {
+            this.imgs = null
+          }
+        }
+
+        if (this.imgs && this.imgs.length) {
+          const canvas = this.graph.list_of_graphcanvas[0]
+          const mouse = canvas.graph_mouse
+          if (!canvas.pointer_is_down && this.pointerDown) {
+            if (
+              mouse[0] === this.pointerDown.pos[0] &&
+              mouse[1] === this.pointerDown.pos[1]
+            ) {
+              this.imageIndex = this.pointerDown.index
+            }
+            this.pointerDown = null
+          }
+
+          let w = this.imgs[0].naturalWidth
+          let h = this.imgs[0].naturalHeight
+          let imageIndex = this.imageIndex
+          const numImages = this.imgs.length
+          if (numImages === 1 && !imageIndex) {
+            this.imageIndex = imageIndex = 0
+          }
+
+          const shiftY = getImageTop(this)
+
+          let dw = this.size[0]
+          let dh = this.size[1]
+          dh -= shiftY
+
+          if (imageIndex == null) {
+            let best = 0
+            let cellWidth
+            let cellHeight
+            let cols = 0
+            let shiftX = 0
+            for (let c = 1; c <= numImages; c++) {
+              const rows = Math.ceil(numImages / c)
+              const cW = dw / c
+              const cH = dh / rows
+              const scaleX = cW / w
+              const scaleY = cH / h
+
+              const scale = Math.min(scaleX, scaleY, 1)
+              const imageW = w * scale
+              const imageH = h * scale
+              const area = imageW * imageH * numImages
+
+              if (area > best) {
+                best = area
+                cellWidth = imageW
+                cellHeight = imageH
+                cols = c
+                shiftX = c * ((cW - imageW) / 2)
+              }
+            }
+
+            let anyHovered = false
+            this.imageRects = []
+            for (let i = 0; i < numImages; i++) {
+              const img = this.imgs[i]
+              const row = Math.floor(i / cols)
+              const col = i % cols
+              const x = col * cellWidth + shiftX
+              const y = row * cellHeight + shiftY
+              if (!anyHovered) {
+                anyHovered = LiteGraph.isInsideRectangle(
+                  mouse[0],
+                  mouse[1],
+                  x + this.pos[0],
+                  y + this.pos[1],
+                  cellWidth,
+                  cellHeight
+                )
+                if (anyHovered) {
+                  this.overIndex = i
+                  let value = 110
+                  if (canvas.pointer_is_down) {
+                    if (!this.pointerDown || this.pointerDown.index !== i) {
+                      this.pointerDown = { index: i, pos: [...mouse] }
+                    }
+                    value = 125
+                  }
+                  ctx.filter = `contrast(${value}%) brightness(${value}%)`
+                  canvas.canvas.style.cursor = 'pointer'
+                }
+              }
+              this.imageRects.push([x, y, cellWidth, cellHeight])
+              ctx.drawImage(img, x, y, cellWidth, cellHeight)
+              ctx.filter = 'none'
+            }
+
+            if (!anyHovered) {
+              this.pointerDown = null
+              this.overIndex = null
+            }
+          } else {
+            // Draw individual
+            const scaleX = dw / w
+            const scaleY = dh / h
+            const scale = Math.min(scaleX, scaleY, 1)
+
+            w *= scale
+            h *= scale
+
+            let x = (dw - w) / 2
+            let y = (dh - h) / 2 + shiftY
+            ctx.drawImage(this.imgs[imageIndex], x, y, w, h)
+
+            const drawButton = (x, y, sz, text) => {
+              const hovered = LiteGraph.isInsideRectangle(
+                mouse[0],
+                mouse[1],
+                x + this.pos[0],
+                y + this.pos[1],
+                sz,
+                sz
+              )
+              let fill = '#333'
+              let textFill = '#fff'
+              let isClicking = false
+              if (hovered) {
+                canvas.canvas.style.cursor = 'pointer'
+                if (canvas.pointer_is_down) {
+                  fill = '#1e90ff'
+                  isClicking = true
+                } else {
+                  fill = '#eee'
+                  textFill = '#000'
+                }
+              } else {
+                this.pointerWasDown = null
+              }
+
+              ctx.fillStyle = fill
+              ctx.beginPath()
+              ctx.roundRect(x, y, sz, sz, [4])
+              ctx.fill()
+              ctx.fillStyle = textFill
+              ctx.font = '12px Arial'
+              ctx.textAlign = 'center'
+              ctx.fillText(text, x + 15, y + 20)
+
+              return isClicking
+            }
+
+            if (numImages > 1) {
+              if (
+                drawButton(
+                  x + w - 35,
+                  y + h - 35,
+                  30,
+                  `${this.imageIndex + 1}/${numImages}`
+                )
+              ) {
+                let i =
+                  this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1
+                if (!this.pointerDown || !this.pointerDown.index === i) {
+                  this.pointerDown = { index: i, pos: [...mouse] }
+                }
+              }
+
+              if (drawButton(x + w - 35, y + 5, 30, `x`)) {
+                if (!this.pointerDown || !this.pointerDown.index === null) {
+                  this.pointerDown = { index: null, pos: [...mouse] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -937,6 +1213,26 @@ export class ComfyApp {
         MissingNodes: missingNodeTypes
       })
     }
+  }
+
+  /**
+   * Loads workflow data from the specified file
+   * @param {File} file
+   */
+  async handleFile(file) {
+    if (file.type === 'application/json' || file.name?.endsWith('.json')) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        this.loadGraphData(JSON.parse(reader.result as string))
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  getPreviewFormatParam() {
+    let preview_format = this.ui.settings.getSettingValue('Comfy.PreviewFormat')
+    if (preview_format) return `&preview=${preview_format}`
+    else return ''
   }
 
   /**

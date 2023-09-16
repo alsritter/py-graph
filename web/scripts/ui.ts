@@ -329,7 +329,7 @@ class ComfySettingsDialog extends ComfyDialog {
    * @param {any} defaultValue - 默认值，如果没有保存的设置值时使用。
    * @returns {*} - 设置的值，如果不存在则返回默认值。
    */
-  getSettingValue(id: string, defaultValue: any): any {
+  getSettingValue(id: string, defaultValue?: any): any {
     const settingId = 'Comfy.Settings.' + id
     const v = localStorage[settingId]
     return v == null ? defaultValue : JSON.parse(v)
