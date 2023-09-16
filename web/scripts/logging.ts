@@ -1,6 +1,6 @@
-import { $el, ComfyDialog } from './ui'
-import { api } from './api'
-import type { ComfyApp } from './app'
+import { $el, ComfyDialog } from './ui.js'
+import { api } from './api.js'
+import type { ComfyApp } from './app.js'
 
 $el('style', {
   textContent: `

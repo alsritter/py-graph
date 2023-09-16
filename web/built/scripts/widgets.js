@@ -7,8 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { LiteGraph } from '../types/litegraph';
-import { api } from './api';
+import { api } from './api.js';
 function getNumberDefaults(inputData, defaultStep) {
     let defaultVal = inputData[1]['default'];
     let { min, max, step } = inputData[1];
@@ -179,7 +178,7 @@ function addMultilineWidget(node, name, opts, app) {
     });
     widget.parent = node;
     document.body.appendChild(widget.inputEl);
-    node.addCustomWidget(widget);
+    node.addIWidget(widget);
     app.canvas.onDrawBackground = function () {
         for (let i in app.graph._nodes) {
             const n = app.graph._nodes[i];

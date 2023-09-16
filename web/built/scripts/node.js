@@ -1,4 +1,3 @@
-import { LGraphNode, LiteGraph } from '../types/litegraph.js';
 export class ComfyNode extends LGraphNode {
     constructor(nodeData, widgets, app) {
         var _a;

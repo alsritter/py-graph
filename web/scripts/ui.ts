@@ -1,6 +1,5 @@
 import { api } from './api.js'
-import type { ComfyApp } from './app'
-import type { Position, CustomElement } from '../types/comfy.js'
+import type { ComfyApp } from './app.js'
 
 /**
  * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。

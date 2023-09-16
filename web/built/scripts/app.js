@@ -24,7 +24,6 @@ import { ComfyWidgets } from './widgets.js';
 import { ComfyNode } from './node.js';
 import { ComfyUI, $el } from './ui.js';
 import { defaultGraph } from './defaultGraph.js';
-import { LGraph, LGraphCanvas, LiteGraph } from '../types/litegraph.js';
 import { ComfyLogging } from './logging.js';
 export class ComfyApp {
     constructor() {
@@ -97,7 +96,7 @@ export class ComfyApp {
     registerNodesFromDefs(defs) {
         return __awaiter(this, void 0, void 0, function* () {
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'addCustomNodeDefs', defs);
-            const widgets = Object.assign({}, ComfyWidgets, ...(yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'getCustomWidgets')).filter(Boolean));
+            const widgets = Object.assign({}, ComfyWidgets, ...(yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'getIWidgets')).filter(Boolean));
             for (const nodeId in defs) {
                 const nodeData = defs[nodeId];
                 const node = Object.assign(new ComfyNode(nodeData, widgets, this), {
@@ -560,7 +559,7 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
         }
         return shiftY;
     }
-    node.prototype.setSizeForImage = function () {
+    node.setSizeForImage = function () {
         if (this.inputHeight) {
             this.setSize(this.size);
             return;
@@ -570,7 +569,7 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
             this.setSize([this.size[0], minHeight]);
         }
     };
-    node.prototype.onDrawBackground = function (ctx) {
+    node.onDrawBackground = function (ctx) {
         if (!this.flags.collapsed) {
             let imgURLs = [];
             let imagesChanged = false;

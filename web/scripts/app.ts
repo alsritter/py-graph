@@ -2,14 +2,7 @@ import { api } from './api.js'
 import { ComfyWidgets } from './widgets.js'
 import { ComfyNode } from './node.js'
 import { ComfyUI, $el } from './ui.js'
-import type {
-  ComfyExtension,
-  CustomGraphNode,
-  CustomWidget,
-  NodeError
-} from '../types/comfy.js'
 import { defaultGraph } from './defaultGraph.js'
-import { IWidget, LGraph, LGraphCanvas, LiteGraph } from '../types/litegraph.js'
 import { ComfyLogging } from './logging.js'
 
 export class ComfyApp {
@@ -65,7 +58,7 @@ export class ComfyApp {
 
   progress: { value: number; max: number }
 
-  dragOverNode: CustomGraphNode
+  dragOverNode: LGraphNode
 
   logging: ComfyLogging
 
@@ -173,7 +166,7 @@ export class ComfyApp {
     const widgets = Object.assign(
       {},
       ComfyWidgets,
-      ...(await this.#invokeExtensionsAsync('getCustomWidgets')).filter(Boolean)
+      ...(await this.#invokeExtensionsAsync('getIWidgets')).filter(Boolean)
     )
 
     // Register a node for each definition
@@ -348,7 +341,7 @@ export class ComfyApp {
 
     api.addEventListener('executed', ({ detail }) => {
       this.nodeOutputs[detail.node] = detail.output
-      const node = this.graph.getNodeById(detail.node) as CustomGraphNode
+      const node = this.graph.getNodeById(detail.node)
       if (node) {
         if (node.onExecuted) node.onExecuted(detail.output)
       }
@@ -428,12 +421,13 @@ export class ComfyApp {
       'dragover',
       (e) => {
         this.canvas.adjustMouseEvent(e)
+        // @ts-ignore
         const node = this.graph.getNodeOnPos(
           // @ts-ignore
           e.canvasX,
           // @ts-ignore
           e.canvasY
-        ) as CustomGraphNode
+        ) as LGraphNode
         if (node) {
           if (node.onDragOver && node.onDragOver(e)) {
             this.dragOverNode = node
@@ -456,10 +450,10 @@ export class ComfyApp {
    * e.g. Draws images and handles thumbnail navigation on nodes that output images
    * @param {*} node The node to add the draw handler
    */
-  #addDrawBackgroundHandler(node) {
+  #addDrawBackgroundHandler(node: ComfyNode) {
     const app = this
 
-    function getImageTop(node) {
+    function getImageTop(node: ComfyNode) {
       let shiftY
       if (node.imageOffset != null) {
         shiftY = node.imageOffset
@@ -481,7 +475,7 @@ export class ComfyApp {
       return shiftY
     }
 
-    node.prototype.setSizeForImage = function () {
+    node.setSizeForImage = function () {
       if (this.inputHeight) {
         this.setSize(this.size)
         return
@@ -492,7 +486,7 @@ export class ComfyApp {
       }
     }
 
-    node.prototype.onDrawBackground = function (ctx) {
+    node.onDrawBackground = function (ctx) {
       if (!this.flags.collapsed) {
         let imgURLs = []
         let imagesChanged = false
@@ -908,7 +902,7 @@ export class ComfyApp {
             const node = app.graph.getNodeById(n.id)
             if (node.widgets) {
               for (const w of node.widgets) {
-                const widget = w as CustomWidget
+                const widget = w
                 // Allow widgets to run callbacks after a prompt has been queued
                 // e.g. random seed after every gen
                 if (widget.afterQueued) {
@@ -940,7 +934,7 @@ export class ComfyApp {
     for (const node of this.graph.computeExecutionOrder(
       false,
       0
-    ) as CustomGraphNode[]) {
+    ) as LGraphNode[]) {
       const n = workflow.nodes.find((n) => n.id === node.id)
 
       if (node.isVirtualNode) {
@@ -973,7 +967,7 @@ export class ComfyApp {
 
       // 存储所有节点连接
       for (let i in node.inputs) {
-        let parent = node.getInputNode(Number(i)) as CustomGraphNode
+        let parent = node.getInputNode(Number(i)) as LGraphNode
         if (parent) {
           let link = node.getInputLink(Number(i))
           while (parent.mode === 4 || parent.isVirtualNode) {
@@ -983,7 +977,7 @@ export class ComfyApp {
               if (link) {
                 parent = parent.getInputNode(
                   link.target_slot
-                ) as CustomGraphNode
+                ) as LGraphNode
                 if (parent) {
                   found = true
                 }
@@ -1003,7 +997,7 @@ export class ComfyApp {
                     if (link) {
                       parent = parent.getInputNode(
                         parent_input
-                      ) as CustomGraphNode
+                      ) as LGraphNode
                     }
                     found = true
                     break

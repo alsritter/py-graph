@@ -1,7 +1,5 @@
 import { ComfyWidgets, addValueControlWidget } from '../../scripts/widgets.js'
 import { app } from '../../scripts/app.js'
-import { LGraphNode, LiteGraph, INodeInputSlot } from '../../types/litegraph.js'
-import { CustomGraphNode, CustomWidget } from '../../types/comfy.js'
 
 const CONVERTED_TYPE = 'converted-widget'
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN']
@@ -16,7 +14,7 @@ function isConvertableWidget(widget, config) {
  * @param widget - 要隐藏的小部件。
  * @param suffix - 要添加到小部件类型的后缀。
  */
-function hideWidget(node: CustomGraphNode, widget: CustomWidget, suffix = '') {
+function hideWidget(node: LGraphNode, widget: IWidget, suffix = '') {
   // 保存原始小部件属性
   widget.origType = widget.type
   widget.origComputeSize = widget.computeSize
@@ -24,6 +22,7 @@ function hideWidget(node: CustomGraphNode, widget: CustomWidget, suffix = '') {
 
   // 设置小部件属性以隐藏它
   widget.computeSize = () => [0, -4] // -4 是由于 litegraph 自动添加的小部件之间的间隙
+  // @ts-ignore
   widget.type = CONVERTED_TYPE + suffix
   widget.serializeValue = () => {
     // 如果没有链接输入，则防止序列化小部件
@@ -402,7 +401,8 @@ app.registerExtension({
         }
 
         if (widget.type === 'number' || widget.type === 'combo') {
-          addValueControlWidget(this as CustomGraphNode, widget, 'fixed')
+          // @ts-ignore
+          addValueControlWidget(this, widget, 'fixed')
         }
 
         // When our value changes, update other widgets to reflect our changes

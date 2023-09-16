@@ -19,8 +19,8 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
     return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
 };
 var _ComfyLogging_enabled, _ComfyLogging_console;
-import { $el, ComfyDialog } from './ui';
-import { api } from './api';
+import { $el, ComfyDialog } from './ui.js';
+import { api } from './api.js';
 $el('style', {
     textContent: `
         .comfy-logging-logs {

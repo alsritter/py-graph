@@ -1,11 +1,5 @@
-import { IWidget, LGraphNode, LiteGraph, widgetTypes } from '../types/litegraph'
-import type { ComfyApp } from './app'
-import { api } from './api'
-import {
-  CustomGraphNode,
-  CustomWidget,
-  customWidgetTypes
-} from '../types/comfy.js'
+import type { ComfyApp } from './app.js'
+import { api } from './api.js'
 
 function getNumberDefaults(inputData, defaultStep) {
   let defaultVal = inputData[1]['default']
@@ -28,8 +22,8 @@ function getNumberDefaults(inputData, defaultStep) {
  * @returns 返回创建的值控制小部件。
  */
 export function addValueControlWidget(
-  node: CustomGraphNode,
-  targetWidget: CustomWidget,
+  node: LGraphNode,
+  targetWidget: IWidget,
   defaultValue = 'randomize'
 ) {
   const valueControl = node.addWidget(
@@ -121,7 +115,7 @@ const MultilineResizeSymbol = Symbol()
  * @param app - 应用程序的上下文。
  */
 function addMultilineWidget(
-  node: CustomGraphNode,
+  node: LGraphNode,
   name: string,
   opts: { [key: string]: any },
   app: ComfyApp
@@ -178,7 +172,7 @@ function addMultilineWidget(
     node.inputHeight = freeSpace
   }
 
-  const widget: CustomWidget = {
+  const widget: IWidget = {
     type: 'customtext',
     name,
     get value() {
@@ -215,7 +209,8 @@ function addMultilineWidget(
         position: 'absolute',
         background: !node.color ? '' : node.color,
         color: !node.color ? '' : 'white',
-        zIndex: app.graph._nodes.indexOf(node as LGraphNode)
+        // @ts-ignore
+        zIndex: app.graph._nodes.indexOf(node)
       })
       this.inputEl.hidden = !visible
     }
@@ -233,14 +228,15 @@ function addMultilineWidget(
   widget.parent = node
   document.body.appendChild(widget.inputEl)
 
-  node.addCustomWidget(widget)
+  node.addIWidget(widget)
 
   app.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen
     // if it goes off screen quickly, the input may not be removed
     // this shifts it off screen so it can be moved back if the node is visible.
     for (let i in app.graph._nodes) {
-      const n = app.graph._nodes[i] as CustomGraphNode
+      // @ts-ignore
+      const n = app.graph._nodes[i] as LGraphNode
       for (let w in n.widgets) {
         let wid = n.widgets[w]
         if (Object.hasOwn(wid, 'inputEl')) {
@@ -301,8 +297,8 @@ function isSlider(display, app) {
  * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
  */
 export const ComfyWidgets = {
-  FLOAT(node: CustomGraphNode, inputName, inputData, app) {
-    let widgetType = isSlider(inputData[1]['display'], app) as customWidgetTypes
+  FLOAT(node: LGraphNode, inputName, inputData, app) {
+    let widgetType = isSlider(inputData[1]['display'], app) as widgetTypes
     const defaultInput = !!inputData[1].default_input
     let { val, config } = getNumberDefaults(inputData, 0.5)
     if (defaultInput) {
@@ -373,7 +369,7 @@ export const ComfyWidgets = {
       })
     }
   },
-  IMAGEUPLOAD(node: CustomGraphNode, inputName, inputData, app: ComfyApp) {
+  IMAGEUPLOAD(node: LGraphNode, inputName, inputData, app: ComfyApp) {
     const imageWidget = node.widgets.find((w) => w.name === 'image')
     let uploadWidget
 

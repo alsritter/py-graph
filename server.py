@@ -121,7 +121,7 @@ class PyGraphServer:
         @routes.get("/extensions")
         async def get_extensions(request: web.Request):
             files = glob.glob(
-                os.path.join(self.web_root, "extensions/**/*.js"), recursive=True
+                os.path.join(self.web_root, "built/extensions/**/*.js"), recursive=True
             )
             return web.json_response(
                 list(

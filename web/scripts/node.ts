@@ -1,9 +1,13 @@
-import { LGraphNode, LiteGraph } from '../types/litegraph.js'
-import type { ComfyObjectInfo } from '../types/comfy.js'
 import type { ComfyApp } from './app.js'
 import type { ComfyWidgetsType } from './widgets.js'
 
 export class ComfyNode extends LGraphNode {
+  imgs?: Record<string, any>
+  inputHeight?: number
+  widgets: IWidget[]
+  comfyClass?: string
+  imageOffset?: number
+
   constructor(
     nodeData: ComfyObjectInfo,
     widgets: ComfyWidgetsType,
