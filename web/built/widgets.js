@@ -11,24 +11,11 @@ function getNumberDefaults(inputData, defaultStep) {
         step = defaultStep;
     return { val: defaultVal, config: { min, max, step: 10.0 * step } };
 }
-/**
- * 添加值控制小部件到节点上。
- * @param {Node} node - 目标节点。
- * @param {Widget} targetWidget - 目标小部件，需要受控制的小部件。
- * @param {string} [defaultValue="randomize"] - 默认值，控制模式的初始设置。可选值包括 "fixed", "increment", "decrement", "randomize"。
- * @param {Array<string>} [values] - 控制模式的可选值。默认为 ["fixed", "increment", "decrement", "randomize"]。
- * @returns {Widget} - 返回创建的值控制小部件。
- */
 export function addValueControlWidget(node, targetWidget, defaultValue = "randomize", values) {
-    /**
-     * 值控制小部件。
-     * @type {Widget}
-     */
     const valueControl = node.addWidget("combo", "control_after_generate", defaultValue, function (v) { }, {
         values: ["fixed", "increment", "decrement", "randomize"],
         serialize: false,
     });
-    // 在排队后执行的操作
     valueControl.afterQueued = () => {
         var v = valueControl.value;
         if (targetWidget.type == "combo" && v !== "fixed") {
@@ -54,14 +41,12 @@ export function addValueControlWidget(node, targetWidget, defaultValue = "random
                 targetWidget.callback(value);
             }
         }
-        else { //number
+        else {
             let min = targetWidget.options.min;
             let max = targetWidget.options.max;
-            // limit to something that javascript can handle
             max = Math.min(1125899906842624, max);
             min = Math.max(-1125899906842624, min);
             let range = (max - min) / (targetWidget.options.step / 10);
-            //adjust values based on valueControl Behaviour
             switch (v) {
                 case "fixed":
                     break;
@@ -76,8 +61,6 @@ export function addValueControlWidget(node, targetWidget, defaultValue = "random
                 default:
                     break;
             }
-            /*check if values are over or under their respective
-            * ranges and set them to min or max.*/
             if (targetWidget.value < min)
                 targetWidget.value = min;
             if (targetWidget.value > max)
@@ -89,15 +72,6 @@ export function addValueControlWidget(node, targetWidget, defaultValue = "random
 ;
 const MultilineSymbol = Symbol();
 const MultilineResizeSymbol = Symbol();
-/**
- * 在 LiteGraph 节点上添加多行小部件，自动计算布局和尺寸。
- * @param {Object} node - 要添加小部件的 LiteGraph 节点对象。
- * @param {String} name - 小部件的名称。
- * @param {Object} opts - 小部件的选项。
- * @param {String} opts.defaultVal - 默认值
- * @param {String} opts.placeholder - 占位符
- * @param {Object} app - 应用程序的上下文。
- */
 function addMultilineWidget(node, name, opts, app) {
     const MIN_SIZE = 50;
     function computeSize(size) {
@@ -106,7 +80,6 @@ function addMultilineWidget(node, name, opts, app) {
             return;
         let y = node.widgets[0].last_y;
         let freeSpace = size[1] - y;
-        // Compute the height of all non customtext widgets
         let widgetHeight = 0;
         const multi = [];
         for (let i = 0; i < node.widgets.length; i++) {
@@ -123,16 +96,13 @@ function addMultilineWidget(node, name, opts, app) {
                 }
             }
         }
-        // See how large each text input can be
         freeSpace -= widgetHeight;
         freeSpace /= multi.length + (!!((_a = node.imgs) === null || _a === void 0 ? void 0 : _a.length));
         if (freeSpace < MIN_SIZE) {
-            // There isnt enough space for all the widgets, increase the size of the node
             freeSpace = MIN_SIZE;
             node.size[1] = y + widgetHeight + freeSpace * (multi.length + (!!((_b = node.imgs) === null || _b === void 0 ? void 0 : _b.length)));
             node.graph.setDirtyCanvas(true);
         }
-        // Position each of the widgets
         for (const w of node.widgets) {
             w.y = y;
             if (w.type === "customtext") {
@@ -159,8 +129,6 @@ function addMultilineWidget(node, name, opts, app) {
         },
         draw: function (ctx, _, widgetWidth, y, widgetHeight) {
             if (!this.parent.inputHeight) {
-                // If we are initially offscreen when created we wont have received a resize event
-                // Calculate it here instead
                 computeSize(node.size);
             }
             const visible = app.canvas.ds.scale > 0.5 && this.type === "customtext";
@@ -199,9 +167,6 @@ function addMultilineWidget(node, name, opts, app) {
     document.body.appendChild(widget.inputEl);
     node.addCustomWidget(widget);
     app.canvas.onDrawBackground = function () {
-        // Draw node isnt fired once the node is off the screen
-        // if it goes off screen quickly, the input may not be removed
-        // this shifts it off screen so it can be moved back if the node is visible.
         for (let n in app.graph._nodes) {
             n = graph._nodes[n];
             for (let w in n.widgets) {
@@ -214,7 +179,6 @@ function addMultilineWidget(node, name, opts, app) {
         }
     };
     node.onRemoved = function () {
-        // When removing this node we need to remove the input from the DOM
         for (let y in this.widgets) {
             if (this.widgets[y].inputEl) {
                 this.widgets[y].inputEl.remove();
@@ -224,7 +188,6 @@ function addMultilineWidget(node, name, opts, app) {
     widget.onRemove = () => {
         var _a;
         (_a = widget.inputEl) === null || _a === void 0 ? void 0 : _a.remove();
-        // Restore original size handler if we are the last
         if (!--node[MultilineSymbol]) {
             node.onResize = node[MultilineResizeSymbol];
             delete node[MultilineSymbol];
@@ -239,7 +202,6 @@ function addMultilineWidget(node, name, opts, app) {
         const onResize = (node[MultilineResizeSymbol] = node.onResize);
         node.onResize = function (size) {
             computeSize(size);
-            // Call original resizer handler
             if (onResize) {
                 onResize.apply(this, arguments);
             }
@@ -253,9 +215,6 @@ function isSlider(display, app) {
     }
     return (display === "slider") ? "slider" : "number";
 }
-/**
- * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
- */
 export const ComfyWidgets = {
     FLOAT(node, inputName, inputData, app) {
         let widgetType = isSlider(inputData[1]["display"], app);

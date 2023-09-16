@@ -48,6 +48,11 @@ export class ComfyApp {
 
 	ctx: CanvasRenderingContext2D;
 
+	/**
+	 * The last node errors.
+	 */
+	lastNodeErrors: [];
+
 	constructor() {
 		this.ui = new ComfyUI(this);
 		this.extensions = [];
@@ -191,13 +196,13 @@ export class ComfyApp {
 				{
 					title: nodeData.display_name || nodeData.name,
 					comfyClass: nodeData.name,
+					category: nodeData.category,
 				}
 			);
 
 			node.prototype.comfyClass = nodeData.name;
 			await this.#invokeExtensionsAsync("beforeRegisterNodeDef", node, nodeData);
 			LiteGraph.registerNodeType(nodeId, node);
-			node.category = nodeData.category;
 		}
 	}
 
@@ -306,7 +311,7 @@ export class ComfyApp {
 		return "(unknown error)"
 	}
 
-	#formatExecutionError(error) {
+	#formatExecutionError(error: { traceback: any[]; node_id: any; node_type: any; exception_message: any; }) {
 		if (error == null) {
 			return "(unknown error)"
 		}
@@ -421,7 +426,7 @@ export class ComfyApp {
 					}
 
 					for (const n of p.workflow.nodes) {
-						const node = graph.getNodeById(n.id);
+						const node = app.graph.getNodeById(n.id);
 						if (node.widgets) {
 							for (const widget of node.widgets) {
 								// Allow widgets to run callbacks after a prompt has been queued

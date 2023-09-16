@@ -22,41 +22,24 @@ var _ComfyApp_instances, _ComfyApp_queueItems, _ComfyApp_processingQueue, _Comfy
 import { api } from "./api.js";
 import { ComfyWidgets } from "./widgets.js";
 import { ComfyUI, $el } from "./ui.js";
+import { defaultGraph } from "./defaultGraph.js";
+import { LGraph, LGraphCanvas, LiteGraph } from "../types/litegraph.js";
 export class ComfyApp {
     constructor() {
         _ComfyApp_instances.add(this);
-        /**
-         * List of entries to queue
-         * @type {{number: number, batchCount: number}[]}
-         */
         _ComfyApp_queueItems.set(this, []);
-        /**
-         * If the queue is currently being processed
-         * @type {boolean}
-         */
         _ComfyApp_processingQueue.set(this, false);
         this.ui = new ComfyUI(this);
-        /**
-         * List of extensions that are registered with the app
-         * @type {ComfyExtension[]}
-         */
         this.extensions = [];
-        /**
-         * Stores the execution output data for each node
-         * @type {Record<string, any>}
-         */
         this.nodeOutputs = {};
     }
-    /**
-     * Set up the app on the page
-     */
     setup() {
         return __awaiter(this, void 0, void 0, function* () {
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_loadExtensions).call(this);
             const mainCanvas = document.createElement("canvas");
             mainCanvas.style.touchAction = "none";
             const canvasEl = (this.canvasEl = Object.assign(mainCanvas, { id: "graph-canvas" }));
-            canvasEl.tabIndex = "1";
+            canvasEl.tabIndex = 1;
             document.body.prepend(canvasEl);
             this.graph = new LGraph();
             const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
@@ -65,7 +48,6 @@ export class ComfyApp {
             LiteGraph.alt_drag_do_clone_nodes = true;
             this.graph.start();
             function resizeCanvas() {
-                // Limit minimal scale to 1, see https://github.com/comfyanonymous/ComfyUI/pull/845
                 const scale = Math.max(window.devicePixelRatio, 1);
                 const { width, height } = canvasEl.getBoundingClientRect();
                 canvasEl.width = Math.round(width * scale);
@@ -73,12 +55,10 @@ export class ComfyApp {
                 canvasEl.getContext("2d").scale(scale, scale);
                 canvas.draw(true, true);
             }
-            // Ensure the canvas fills the window
             resizeCanvas();
             window.addEventListener("resize", resizeCanvas);
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "init");
             yield this.registerNodes();
-            // Load previous workflow
             let restored = false;
             try {
                 const json = localStorage.getItem("workflow");
@@ -91,23 +71,17 @@ export class ComfyApp {
             catch (err) {
                 console.error("Error loading previous workflow", err);
             }
-            // We failed to restore a workflow so load the default
             if (!restored) {
-                this.loadGraphData();
+                this.loadGraphData(null);
             }
-            // Save current workflow automatically
             setInterval(() => localStorage.setItem("workflow", JSON.stringify(this.graph.serialize())), 1000);
             __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_addApiUpdateHandlers).call(this);
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "setup");
         });
     }
-    /**
-     * Registers nodes with the graph
-     */
     registerNodes() {
         return __awaiter(this, void 0, void 0, function* () {
             const app = this;
-            // Load node definitions from the backend
             const defs = yield api.getNodeDefs();
             yield this.registerNodesFromDefs(defs);
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "registerCustomNodes");
@@ -116,9 +90,7 @@ export class ComfyApp {
     registerNodesFromDefs(defs) {
         return __awaiter(this, void 0, void 0, function* () {
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "addCustomNodeDefs", defs);
-            // Generate list of known widgets
             const widgets = Object.assign({}, ComfyWidgets, ...(yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "getCustomWidgets")).filter(Boolean));
-            // Register a node for each definition
             for (const nodeId in defs) {
                 const nodeData = defs[nodeId];
                 const node = Object.assign(function ComfyNode() {
@@ -136,19 +108,15 @@ export class ComfyApp {
                         }
                         else {
                             if (Array.isArray(type)) {
-                                // Enums
                                 Object.assign(config, widgets.COMBO(this, inputName, inputData, app) || {});
                             }
                             else if (`${type}:${inputName}` in widgets) {
-                                // Support custom widgets by Type:Name
                                 Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, app) || {});
                             }
                             else if (type in widgets) {
-                                // Standard type widgets
                                 Object.assign(config, widgets[type](this, inputName, inputData, app) || {});
                             }
                             else {
-                                // Node connection inputs
                                 this.addInput(inputName, type);
                             }
                         }
@@ -167,18 +135,14 @@ export class ComfyApp {
                 }, {
                     title: nodeData.display_name || nodeData.name,
                     comfyClass: nodeData.name,
+                    category: nodeData.category,
                 });
                 node.prototype.comfyClass = nodeData.name;
                 yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, "beforeRegisterNodeDef", node, nodeData);
                 LiteGraph.registerNodeType(nodeId, node);
-                node.category = nodeData.category;
             }
         });
     }
-    /**
-     * Registers extension with the app
-     * @param {ComfyExtension} extension
-     */
     registerExtension(extension) {
         if (!extension.name) {
             throw new Error("Extensions must have a 'name' property.");
@@ -188,14 +152,10 @@ export class ComfyApp {
         }
         this.extensions.push(extension);
     }
-    /**
-     * 执行当前图形工作流。
-     */
     queueRunner(number, batchCount = 1) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log("Queueing runner", number, batchCount);
             __classPrivateFieldGet(this, _ComfyApp_queueItems, "f").push({ number, batchCount });
-            // Only have one action process the items so each one gets a unique seed correctly
             if (__classPrivateFieldGet(this, _ComfyApp_processingQueue, "f")) {
                 return;
             }
@@ -223,11 +183,9 @@ export class ComfyApp {
                             break;
                         }
                         for (const n of p.workflow.nodes) {
-                            const node = graph.getNodeById(n.id);
+                            const node = app.graph.getNodeById(n.id);
                             if (node.widgets) {
                                 for (const widget of node.widgets) {
-                                    // Allow widgets to run callbacks after a prompt has been queued
-                                    // e.g. random seed after every gen
                                     if (widget.afterQueued) {
                                         widget.afterQueued();
                                     }
@@ -244,32 +202,23 @@ export class ComfyApp {
             }
         });
     }
-    /**
-     * 将当前图形工作流转换为适合发送至 API 的格式。
-     * @returns {Object} 包含序列化后的工作流和节点连接的对象。
-     */
     graphToRunner() {
         return __awaiter(this, void 0, void 0, function* () {
-            // 序列化图形工作流
             const workflow = this.graph.serialize();
             const output = {};
-            // 按执行顺序处理节点
             for (const node of this.graph.computeExecutionOrder(false)) {
                 const n = workflow.nodes.find((n) => n.id === node.id);
                 if (node.isVirtualNode) {
-                    // 不序列化仅在前端使用的节点，但允许它们进行更改
                     if (node.applyToGraph) {
                         node.applyToGraph(workflow);
                     }
                     continue;
                 }
                 if (node.mode === 2 || node.mode === 4) {
-                    // 不序列化已静音的节点
                     continue;
                 }
                 const inputs = {};
                 const widgets = node.widgets;
-                // 存储所有小部件的值
                 if (widgets) {
                     for (const i in widgets) {
                         const widget = widgets[i];
@@ -278,7 +227,6 @@ export class ComfyApp {
                         }
                     }
                 }
-                // 存储所有节点连接
                 for (let i in node.inputs) {
                     let parent = node.getInputNode(i);
                     if (parent) {
@@ -325,7 +273,6 @@ export class ComfyApp {
                     class_type: node.comfyClass,
                 };
             }
-            // 移除与已删除节点连接的输入
             for (const o in output) {
                 for (const i in output[o].inputs) {
                     if (Array.isArray(output[o].inputs[i])
@@ -338,10 +285,6 @@ export class ComfyApp {
             return { workflow, output };
         });
     }
-    /**
- * Populates the graph with the specified workflow data
- * @param {*} graphData A serialized graph object
- */
     loadGraphData(graphData) {
         var _a;
         this.clean();
@@ -352,7 +295,6 @@ export class ComfyApp {
         }
         const missingNodeTypes = [];
         for (let n of graphData.nodes) {
-            // Find missing node types
             if (!(n.type in LiteGraph.registered_node_types)) {
                 missingNodeTypes.push(n.type);
             }
@@ -362,7 +304,6 @@ export class ComfyApp {
         }
         catch (error) {
             let errorHint = [];
-            // Try extracting filename to see if it was caused by an extension script
             const filename = error.fileName || ((_a = (error.stack || "").match(/(\/extensions\/.*\.js)/)) === null || _a === void 0 ? void 0 : _a[1]);
             const pos = (filename || "").indexOf("/extensions/");
             if (pos > -1) {
@@ -373,7 +314,6 @@ export class ComfyApp {
                     textContent: filename.substring(pos),
                 }));
             }
-            // Show dialog to let the user know something went wrong loading the data
             this.ui.dialog.show($el("div", [
                 $el("p", { textContent: "Loading aborted due to error reloading workflow data" }),
                 $el("pre", {
@@ -401,8 +341,6 @@ export class ComfyApp {
             size[1] = Math.max(node.size[1], size[1]);
             node.size = size;
             if (node.widgets) {
-                // If you break something in the backend and want to patch workflows in the frontend
-                // This is the place to do this
                 for (let widget of node.widgets) {
                     if (reset_invalid_values) {
                         if (widget.type == "combo") {
@@ -422,9 +360,6 @@ export class ComfyApp {
             });
         }
     }
-    /**
-     * Clean current state
-     */
     clean() {
         this.nodeOutputs = {};
         this.lastNodeErrors = null;
@@ -446,7 +381,6 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
     });
 }, _ComfyApp_invokeExtensionsAsync = function _ComfyApp_invokeExtensionsAsync(method, ...args) {
     return __awaiter(this, void 0, void 0, function* () {
-        // 这里传入的是一个自定义插件的不同执行阶段的函数名称，具体参考 logging.js.example 文件的说明
         return yield Promise.all(this.extensions.map((ext) => __awaiter(this, void 0, void 0, function* () {
             if (method in ext) {
                 try {
@@ -514,13 +448,11 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
     });
     api.addEventListener("progress", ({ detail }) => {
         this.progress = detail;
-        // Clear the preview image for the node
         this.graph.setDirtyCanvas(true, false);
     });
     api.addEventListener("executing", ({ detail }) => {
         this.progress = null;
         this.runningNodeId = detail;
-        // Clear the preview image for the node
         this.graph.setDirtyCanvas(true, false);
         delete this.nodePreviewImages[this.runningNodeId];
     });

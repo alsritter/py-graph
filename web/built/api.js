@@ -18,56 +18,46 @@ class ComfyApi extends EventTarget {
         super();
         _ComfyApi_instances.add(this);
         _ComfyApi_registered.set(this, new Set());
+        this.api_base = "";
+        this.api_host = "";
+        this.socket = null;
+        this.clientId = "";
         this.api_host = location.host;
         this.api_base = location.pathname.split('/').slice(0, -1).join('/');
     }
     apiURL(route) {
         return this.api_base + route;
     }
-    fetchApi(route, options) {
+    fetchApi(route, options = {}) {
         return fetch(this.apiURL(route), options);
     }
-    addEventListener(type, callback, options) {
+    addEventListener(type, callback, options = {}) {
         super.addEventListener(type, callback, options);
         __classPrivateFieldGet(this, _ComfyApi_registered, "f").add(type);
     }
-    /**
-     * init sockets and realtime updates
-     */
     init() {
-        __classPrivateFieldGet(this, _ComfyApi_instances, "m", _ComfyApi_createSocket).call(this);
+        __classPrivateFieldGet(this, _ComfyApi_instances, "m", _ComfyApi_createSocket).call(this, true);
     }
-    /**
-     * Loads node object definitions for the graph
-     * @returns The node definitions
-     */
     getNodeDefs() {
         return __awaiter(this, void 0, void 0, function* () {
             const resp = yield this.fetchApi("/object_info", { cache: "no-store" });
             return yield resp.json();
         });
     }
-    /**
-     * Gets a list of extension urls
-     * @returns An array of script urls to import
-     */
     getExtensions() {
         return __awaiter(this, void 0, void 0, function* () {
             const resp = yield this.fetchApi("/extensions", { cache: "no-store" });
             return yield resp.json();
         });
     }
-    /**
-     *
-     * @param {number} number The index at which to queue the runner, passing -1 will insert the runner at the front of the queue
-     * @param {object} runner The runner data to queue
-     */
     queueRunner(number, { output, workflow }) {
         return __awaiter(this, void 0, void 0, function* () {
             const body = {
                 client_id: this.clientId,
                 runner: output,
                 extra_data: { extra_pnginfo: { workflow } },
+                front: false,
+                number: 0,
             };
             if (number === -1) {
                 body.front = true;
