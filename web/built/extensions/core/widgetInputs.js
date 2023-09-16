@@ -88,8 +88,9 @@ app.registerExtension({
     name: 'Comfy.WidgetInputs',
     beforeRegisterNodeDef(nodeType, nodeData, app) {
         return __awaiter(this, void 0, void 0, function* () {
-            const origGetExtraMenuOptions = nodeType.getExtraMenuOptions;
-            nodeType.getExtraMenuOptions = function (_, options) {
+            const nodeTypePrototype = Object.getPrototypeOf(nodeType);
+            const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions;
+            const newGetExtraMenuOptions = function (_, options) {
                 var _a, _b, _c, _d;
                 const r = origGetExtraMenuOptions
                     ? origGetExtraMenuOptions.apply(this, arguments)
@@ -126,8 +127,8 @@ app.registerExtension({
                 }
                 return r;
             };
-            const origOnConfigure = nodeType.onConfigure;
-            nodeType.onConfigure = function () {
+            const origOnConfigure = nodeTypePrototype.onConfigure;
+            const newOnConfigure = function () {
                 const r = origOnConfigure
                     ? origOnConfigure.apply(this, arguments)
                     : undefined;
@@ -154,9 +155,9 @@ app.registerExtension({
                 }
                 return false;
             }
-            const origOnInputDblClick = nodeType.onInputDblClick;
             const ignoreDblClick = Symbol();
-            nodeType.onInputDblClick = function (slot) {
+            const origOnInputDblClick = nodeTypePrototype.onInputDblClick;
+            const newOnInputDblClick = function (slot) {
                 var _a;
                 const r = origOnInputDblClick
                     ? origOnInputDblClick.apply(this, arguments)
@@ -183,6 +184,7 @@ app.registerExtension({
                 }, 300);
                 return r;
             };
+            Object.setPrototypeOf(nodeType, Object.assign(Object.assign({}, nodeTypePrototype), { onInputDblClick: newOnInputDblClick, getExtraMenuOptions: newGetExtraMenuOptions, onConfigure: newOnConfigure }));
         });
     },
     registerCustomNodes() {

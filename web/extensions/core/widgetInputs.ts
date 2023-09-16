@@ -120,10 +120,11 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
+    const nodeTypePrototype = Object.getPrototypeOf(nodeType)
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
-    const origGetExtraMenuOptions = nodeType.getExtraMenuOptions
-    nodeType.getExtraMenuOptions = function (_, options) {
+    const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
+    const newGetExtraMenuOptions = function (_, options) {
       const r = origGetExtraMenuOptions
         ? origGetExtraMenuOptions.apply(this, arguments)
         : undefined
@@ -175,9 +176,8 @@ app.registerExtension({
     }
 
     // 从配置文件里面加载出来的恢复之前的节点（这个函数会在根据配置重新加载时调用）
-    const origOnConfigure = nodeType.onConfigure
-    // 首先保存原始的 onConfigure 回调函数，然后重写 onConfigure 回调函数，调用原始的 onConfigure 回调函数并保存返回值
-    nodeType.onConfigure = function () {
+    const origOnConfigure = nodeTypePrototype.onConfigure
+    const newOnConfigure = function () {
       const r = origOnConfigure
         ? origOnConfigure.apply(this, arguments)
         : undefined
@@ -208,14 +208,15 @@ app.registerExtension({
       return false
     }
 
+    const ignoreDblClick = Symbol()
+
     /**
      * 双击小部件输入以自动连接一个原始节点。
      * @param {number} slot - 输入插槽的索引。
      * @returns {*} - 原始 onInputDblClick 方法的返回值。
      */
-    const origOnInputDblClick = nodeType.onInputDblClick
-    const ignoreDblClick = Symbol()
-    nodeType.onInputDblClick = function (slot) {
+    const origOnInputDblClick = nodeTypePrototype.onInputDblClick
+    const newOnInputDblClick = function (slot) {
       const r = origOnInputDblClick
         ? origOnInputDblClick.apply(this, arguments)
         : undefined
@@ -253,6 +254,13 @@ app.registerExtension({
 
       return r
     }
+
+    Object.setPrototypeOf(nodeType, {
+      ...nodeTypePrototype,
+      onInputDblClick: newOnInputDblClick,
+      getExtraMenuOptions: newGetExtraMenuOptions,
+      onConfigure: newOnConfigure
+    })
   },
   registerCustomNodes() {
     class PrimitiveNode extends LGraphNode {

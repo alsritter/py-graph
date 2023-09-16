@@ -199,19 +199,14 @@ export class ComfyApp {
     for (const nodeId in defs) {
       const nodeData = defs[nodeId]
 
-      class ComfyNode implements IPrototype {
+      class ComfyNode {
         imgs?: Record<string, any>
         inputHeight?: number
         widgets: IWidget[]
         comfyClass?: string
         imageOffset?: number
 
-        prototype: any
-
         constructor(title?: string) {
-          // 把当前类的属性都挂载一份到 prototype 里面
-          this.prototype = Object.getPrototypeOf(this)
-
           // @ts-ignore
           const that = this as LGraphNode
 
@@ -284,13 +279,18 @@ export class ComfyApp {
         category: nodeData.category
       })
 
-      node.comfyClass = nodeData.name
+      const nodePrototype = Object.getPrototypeOf(node)
+      Object.setPrototypeOf(node, {
+        ...nodePrototype,
+        comfyClass: nodeData.name,
+        category: nodeData.category
+      })
 
       this.#addDrawBackgroundHandler(node as any)
 
       await this.#invokeExtensionsAsync('beforeRegisterNodeDef', node, nodeData)
 
-      console.log('Registering node', node.prototype)
+      console.log('Registering node', Object.getPrototypeOf(node))
       LiteGraph.registerNodeType(nodeId, node)
     }
   }
@@ -583,7 +583,9 @@ export class ComfyApp {
       return shiftY
     }
 
+    const nodePrototype = Object.getPrototypeOf(node)
     Object.setPrototypeOf(node, {
+      ...nodePrototype,
       setSizeForImage: function () {
         if (this.inputHeight) {
           this.setSize(this.size)
@@ -593,10 +595,7 @@ export class ComfyApp {
         if (this.size[1] < minHeight) {
           this.setSize([this.size[0], minHeight])
         }
-      }
-    })
-
-    Object.setPrototypeOf(node, {
+      },
       onDrawBackground: function (ctx) {
         if (!this.flags.collapsed) {
           let imgURLs = []
@@ -831,145 +830,149 @@ export class ComfyApp {
    * Draws node highlights (executing, drag drop) and progress bar
    */
   #addDrawNodeHandler() {
-    const origDrawNodeShape = LGraphCanvas.prototype.drawNodeShape
+    const lgraphCanvasPrototype = Object.getPrototypeOf(LGraphCanvas)
+
+    const origDrawNode = lgraphCanvasPrototype.drawNode
+    const origDrawNodeShape = lgraphCanvasPrototype.drawNodeShape
     const self = this
 
-    LGraphCanvas.prototype.drawNodeShape = function (
-      node,
-      ctx,
-      size,
-      fgcolor,
-      bgcolor,
-      selected,
-      mouse_over
-    ) {
-      const res = origDrawNodeShape.apply(this, arguments)
-
-      const nodeErrors = self.lastNodeErrors?.[node.id] as NodeError
-
-      let color = null
-      let lineWidth = 1
-      if (node.id === +self.runningNodeId) {
-        color = '#0f0'
-      } else if (self.dragOverNode && node.id === self.dragOverNode.id) {
-        color = 'dodgerblue'
-      } else if (nodeErrors?.errors) {
-        color = 'red'
-        lineWidth = 2
-      } else if (
-        self.lastExecutionError &&
-        +self.lastExecutionError.node_id === node.id
+    Object.setPrototypeOf(LGraphCanvas, {
+      ...lgraphCanvasPrototype,
+      drawNodeShape: function (
+        node: LGraphNode,
+        ctx,
+        size,
+        fgcolor,
+        bgcolor,
+        selected,
+        mouse_over
       ) {
-        color = '#f0f'
-        lineWidth = 2
-      }
+        const res = origDrawNodeShape.apply(this, arguments)
 
-      if (color) {
-        const shape = node._shape || node.shape || LiteGraph.ROUND_SHAPE
-        ctx.lineWidth = lineWidth
-        ctx.globalAlpha = 0.8
-        ctx.beginPath()
-        if (shape == LiteGraph.BOX_SHAPE)
-          ctx.rect(
-            -6,
-            -6 - LiteGraph.NODE_TITLE_HEIGHT,
-            12 + size[0] + 1,
-            12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT
+        const nodeErrors = self.lastNodeErrors?.[node.id] as NodeError
+
+        let color = null
+        let lineWidth = 1
+        if (node.id === +self.runningNodeId) {
+          color = '#0f0'
+        } else if (self.dragOverNode && node.id === self.dragOverNode.id) {
+          color = 'dodgerblue'
+        } else if (nodeErrors?.errors) {
+          color = 'red'
+          lineWidth = 2
+        } else if (
+          self.lastExecutionError &&
+          +self.lastExecutionError.node_id === node.id
+        ) {
+          color = '#f0f'
+          lineWidth = 2
+        }
+
+        if (color) {
+          const shape = node._shape || node.shape || LiteGraph.ROUND_SHAPE
+          ctx.lineWidth = lineWidth
+          ctx.globalAlpha = 0.8
+          ctx.beginPath()
+          if (shape == LiteGraph.BOX_SHAPE)
+            ctx.rect(
+              -6,
+              -6 - LiteGraph.NODE_TITLE_HEIGHT,
+              12 + size[0] + 1,
+              12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT
+            )
+          else if (
+            shape == LiteGraph.ROUND_SHAPE ||
+            (shape == LiteGraph.CARD_SHAPE && node.flags.collapsed)
           )
-        else if (
-          shape == LiteGraph.ROUND_SHAPE ||
-          (shape == LiteGraph.CARD_SHAPE && node.flags.collapsed)
-        )
-          ctx.roundRect(
-            -6,
-            -6 - LiteGraph.NODE_TITLE_HEIGHT,
-            12 + size[0] + 1,
-            12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT,
-            this.round_radius * 2
-          )
-        else if (shape == LiteGraph.CARD_SHAPE)
-          ctx.roundRect(
-            -6,
-            -6 - LiteGraph.NODE_TITLE_HEIGHT,
-            12 + size[0] + 1,
-            12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT,
-            [this.round_radius * 2, this.round_radius * 2, 2, 2]
-          )
-        else if (shape == LiteGraph.CIRCLE_SHAPE)
-          ctx.arc(
-            size[0] * 0.5,
-            size[1] * 0.5,
-            size[0] * 0.5 + 6,
+            ctx.roundRect(
+              -6,
+              -6 - LiteGraph.NODE_TITLE_HEIGHT,
+              12 + size[0] + 1,
+              12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT,
+              this.round_radius * 2
+            )
+          else if (shape == LiteGraph.CARD_SHAPE)
+            ctx.roundRect(
+              -6,
+              -6 - LiteGraph.NODE_TITLE_HEIGHT,
+              12 + size[0] + 1,
+              12 + size[1] + LiteGraph.NODE_TITLE_HEIGHT,
+              [this.round_radius * 2, this.round_radius * 2, 2, 2]
+            )
+          else if (shape == LiteGraph.CIRCLE_SHAPE)
+            ctx.arc(
+              size[0] * 0.5,
+              size[1] * 0.5,
+              size[0] * 0.5 + 6,
+              0,
+              Math.PI * 2
+            )
+          ctx.strokeStyle = color
+          ctx.stroke()
+          ctx.strokeStyle = fgcolor
+          ctx.globalAlpha = 1
+        }
+
+        if (self.progress && node.id === +self.runningNodeId) {
+          ctx.fillStyle = 'green'
+          ctx.fillRect(
             0,
-            Math.PI * 2
+            0,
+            size[0] * (self.progress.value / self.progress.max),
+            6
           )
-        ctx.strokeStyle = color
-        ctx.stroke()
-        ctx.strokeStyle = fgcolor
-        ctx.globalAlpha = 1
-      }
+          ctx.fillStyle = bgcolor
+        }
 
-      if (self.progress && node.id === +self.runningNodeId) {
-        ctx.fillStyle = 'green'
-        ctx.fillRect(
-          0,
-          0,
-          size[0] * (self.progress.value / self.progress.max),
-          6
-        )
-        ctx.fillStyle = bgcolor
-      }
-
-      // Highlight inputs that failed validation
-      if (nodeErrors) {
-        ctx.lineWidth = 2
-        ctx.strokeStyle = 'red'
-        for (const error of nodeErrors.errors) {
-          if (error.extra_info && error.extra_info.input_name) {
-            const inputIndex = node.findInputSlot(error.extra_info.input_name)
-            if (inputIndex !== -1) {
-              let pos = node.getConnectionPos(true, inputIndex)
-              ctx.beginPath()
-              ctx.arc(
-                pos[0] - node.pos[0],
-                pos[1] - node.pos[1],
-                12,
-                0,
-                2 * Math.PI,
-                false
-              )
-              ctx.stroke()
+        // Highlight inputs that failed validation
+        if (nodeErrors) {
+          ctx.lineWidth = 2
+          ctx.strokeStyle = 'red'
+          for (const error of nodeErrors.errors) {
+            if (error.extra_info && error.extra_info.input_name) {
+              const inputIndex = node.findInputSlot(error.extra_info.input_name)
+              if (inputIndex !== -1) {
+                let pos = node.getConnectionPos(true, inputIndex)
+                ctx.beginPath()
+                ctx.arc(
+                  pos[0] - node.pos[0],
+                  pos[1] - node.pos[1],
+                  12,
+                  0,
+                  2 * Math.PI,
+                  false
+                )
+                ctx.stroke()
+              }
             }
           }
         }
+
+        return res
+      },
+      drawNode: function (node, ctx) {
+        var editor_alpha = this.editor_alpha
+        var old_color = node.bgcolor
+
+        if (node.mode === 2) {
+          // never
+          this.editor_alpha = 0.4
+        }
+
+        if (node.mode === 4) {
+          // never
+          node.bgcolor = '#FF00FF'
+          this.editor_alpha = 0.2
+        }
+
+        const res = origDrawNode.apply(this, arguments)
+
+        this.editor_alpha = editor_alpha
+        node.bgcolor = old_color
+
+        return res
       }
-
-      return res
-    }
-
-    const origDrawNode = LGraphCanvas.prototype.drawNode
-    LGraphCanvas.prototype.drawNode = function (node, ctx) {
-      var editor_alpha = this.editor_alpha
-      var old_color = node.bgcolor
-
-      if (node.mode === 2) {
-        // never
-        this.editor_alpha = 0.4
-      }
-
-      if (node.mode === 4) {
-        // never
-        node.bgcolor = '#FF00FF'
-        this.editor_alpha = 0.2
-      }
-
-      const res = origDrawNode.apply(this, arguments)
-
-      this.editor_alpha = editor_alpha
-      node.bgcolor = old_color
-
-      return res
-    }
+    })
   }
 
   /**
@@ -1079,15 +1082,17 @@ export class ComfyApp {
 
       // 存储所有节点连接
       for (let i in node.inputs) {
-        let parent = node.getInputNode(Number(i)) as LGraphNode
+        // @ts-ignore
+        let parent = node.getInputNode(i)
         if (parent) {
-          let link = node.getInputLink(Number(i))
+          // @ts-ignore
+          let link = node.getInputLink(i)
           while (parent.mode === 4 || parent.isVirtualNode) {
             let found = false
             if (parent.isVirtualNode) {
               link = parent.getInputLink(link.origin_slot)
               if (link) {
-                parent = parent.getInputNode(link.target_slot) as LGraphNode
+                parent = parent.getInputNode(link.target_slot)
                 if (parent) {
                   found = true
                 }
@@ -1095,17 +1100,19 @@ export class ComfyApp {
             } else if (link && parent.mode === 4) {
               let all_inputs = [link.origin_slot]
               if (parent.inputs) {
-                all_inputs = all_inputs.concat(
-                  Object.keys(parent.inputs).map((key) => Number(key))
-                )
-                for (let parent_input of all_inputs) {
+                // @ts-ignore
+                all_inputs = all_inputs.concat(Object.keys(parent.inputs))
+                for (let parent_input in all_inputs) {
+                  // @ts-ignore
                   parent_input = all_inputs[parent_input]
                   if (
                     parent.inputs[parent_input].type === node.inputs[i].type
                   ) {
+                    // @ts-ignore
                     link = parent.getInputLink(parent_input)
                     if (link) {
-                      parent = parent.getInputNode(parent_input) as LGraphNode
+                      // @ts-ignore
+                      parent = parent.getInputNode(parent_input)
                     }
                     found = true
                     break
@@ -1122,7 +1129,8 @@ export class ComfyApp {
           if (link) {
             inputs[node.inputs[i].name] = [
               String(link.origin_id),
-              link.origin_slot
+              // @ts-ignore
+              parseInt(link.origin_slot)
             ]
           }
         }
