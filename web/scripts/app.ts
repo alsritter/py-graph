@@ -601,7 +601,7 @@ export class ComfyApp {
           }
         }
 
-        const preview = app.nodePreviewImages[this.id + '']
+        const preview = app.nodePreviewImages?.[this.id + '']
         if (this.preview !== preview) {
           this.preview = preview
           imagesChanged = true

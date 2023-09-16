@@ -613,6 +613,7 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
         }
     };
     node.prototype.onDrawBackground = function (ctx) {
+        var _a;
         if (!this.flags.collapsed) {
             let imgURLs = [];
             let imagesChanged = false;
@@ -628,7 +629,7 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
                     }));
                 }
             }
-            const preview = app.nodePreviewImages[this.id + ''];
+            const preview = (_a = app.nodePreviewImages) === null || _a === void 0 ? void 0 : _a[this.id + ''];
             if (this.preview !== preview) {
                 this.preview = preview;
                 imagesChanged = true;
