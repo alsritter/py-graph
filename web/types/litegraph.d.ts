@@ -735,6 +735,7 @@ export declare global {
     widgets?: IWidget[]
     comfyClass?: string
     isVirtualNode?: boolean
+    imageOffset?: number
 
     // ==== METHODS ====
 
@@ -903,7 +904,7 @@ export declare global {
       options?: T['options']
     ): T
 
-    addIWidget<T extends IWidget>(IWidget: T): T
+    addCustomWidget<T extends IWidget>(customWidget: T): T
 
     /**
      * returns the bounding of the object, used for rendering purposes
@@ -1132,7 +1133,7 @@ export declare global {
     ): ContextMenuItem[]
 
     // ==== 自定义的方法 ====
-    setSizeForImage?(): void
+    setSizeForImage: () => void
     callback?: (...argArray: any[]) => void
     onDrawBackground?: (ctx: CanvasRenderingContext2D) => void
 

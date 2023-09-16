@@ -228,7 +228,7 @@ function addMultilineWidget(
   widget.parent = node
   document.body.appendChild(widget.inputEl)
 
-  node.addIWidget(widget)
+  node.addCustomWidget(widget)
 
   app.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen

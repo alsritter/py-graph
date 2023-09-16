@@ -367,7 +367,7 @@ export class ComfyLogging {
     this.entries = []
   }
 
-  addEntry(source, type, ...args) {
+  addEntry(source: string, type: string, ...args: { UserAgent?: string; MissingNodes?: any[] }[]) {
     if (this.enabled) {
       this.entries.push({
         source,

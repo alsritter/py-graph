@@ -4,6 +4,10 @@ import { ComfyApp } from '../scripts/app'
 type Merge<M, N> = Omit<M, Extract<keyof M, keyof N>> & N
 
 declare global {
+  interface IPrototype {
+    prototype: any
+  }
+
   interface Position {
     x: number
     y: number

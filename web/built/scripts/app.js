@@ -21,7 +21,6 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
 var _ComfyApp_instances, _ComfyApp_queueItems, _ComfyApp_processingQueue, _ComfyApp_loadExtensions, _ComfyApp_invokeExtensionsAsync, _ComfyApp_invokeExtensions, _ComfyApp_formatRunnerError, _ComfyApp_formatExecutionError, _ComfyApp_addApiUpdateHandlers, _ComfyApp_addDropHandler, _ComfyApp_addDrawBackgroundHandler, _ComfyApp_addDrawNodeHandler;
 import { api } from './api.js';
 import { ComfyWidgets } from './widgets.js';
-import { ComfyNode } from './node.js';
 import { ComfyUI, $el } from './ui.js';
 import { defaultGraph } from './defaultGraph.js';
 import { ComfyLogging } from './logging.js';
@@ -97,9 +96,56 @@ export class ComfyApp {
         return __awaiter(this, void 0, void 0, function* () {
             yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'addCustomNodeDefs', defs);
             const widgets = Object.assign({}, ComfyWidgets, ...(yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'getIWidgets')).filter(Boolean));
+            console.log('Registering nodes', defs);
             for (const nodeId in defs) {
                 const nodeData = defs[nodeId];
-                const node = Object.assign(new ComfyNode(nodeData, widgets, this), {
+                class ComfyNode {
+                    constructor(title) {
+                        var _a;
+                        this.prototype = Object.getPrototypeOf(this);
+                        const that = this;
+                        var inputs = nodeData['input']['required'];
+                        if (nodeData['input']['optional'] != undefined) {
+                            inputs = Object.assign({}, nodeData['input']['required'], nodeData['input']['optional']);
+                        }
+                        const config = { minWidth: 1, minHeight: 1 };
+                        for (const inputName in inputs) {
+                            const inputData = inputs[inputName];
+                            const type = inputData[0];
+                            if ((_a = inputData[1]) === null || _a === void 0 ? void 0 : _a.forceInput) {
+                                that.addInput(inputName, type);
+                            }
+                            else {
+                                if (Array.isArray(type)) {
+                                    Object.assign(config, widgets.COMBO(this, inputName, inputData, app) || {});
+                                }
+                                else if (`${type}:${inputName}` in widgets) {
+                                    Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, app) || {});
+                                }
+                                else if (type in widgets) {
+                                    Object.assign(config, widgets[type](this, inputName, inputData, app) || {});
+                                }
+                                else {
+                                    that.addInput(inputName, type);
+                                }
+                            }
+                        }
+                        for (const o in nodeData['output']) {
+                            const output = nodeData['output'][o];
+                            const outputName = nodeData['output_name'][o] || output;
+                            const outputShape = nodeData['output_is_list'][o]
+                                ? LiteGraph.GRID_SHAPE
+                                : LiteGraph.CIRCLE_SHAPE;
+                            that.addOutput(outputName, output, { shape: outputShape });
+                        }
+                        const s = that.computeSize();
+                        s[0] = Math.max(config.minWidth, s[0] * 1.5);
+                        s[1] = Math.max(config.minHeight, s[1]);
+                        that.size = s;
+                        that.serialize_widgets = true;
+                    }
+                }
+                const node = Object.assign(ComfyNode, {
                     title: nodeData.display_name || nodeData.name,
                     comfyClass: nodeData.name,
                     category: nodeData.category
@@ -107,6 +153,7 @@ export class ComfyApp {
                 node.comfyClass = nodeData.name;
                 __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_addDrawBackgroundHandler).call(this, node);
                 yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'beforeRegisterNodeDef', node, nodeData);
+                console.log('Registering node', node.prototype);
                 LiteGraph.registerNodeType(nodeId, node);
             }
         });
@@ -559,196 +606,200 @@ _ComfyApp_queueItems = new WeakMap(), _ComfyApp_processingQueue = new WeakMap(),
         }
         return shiftY;
     }
-    node.setSizeForImage = function () {
-        if (this.inputHeight) {
-            this.setSize(this.size);
-            return;
+    Object.setPrototypeOf(node, {
+        setSizeForImage: function () {
+            if (this.inputHeight) {
+                this.setSize(this.size);
+                return;
+            }
+            const minHeight = getImageTop(this) + 220;
+            if (this.size[1] < minHeight) {
+                this.setSize([this.size[0], minHeight]);
+            }
         }
-        const minHeight = getImageTop(this) + 220;
-        if (this.size[1] < minHeight) {
-            this.setSize([this.size[0], minHeight]);
-        }
-    };
-    node.onDrawBackground = function (ctx) {
-        if (!this.flags.collapsed) {
-            let imgURLs = [];
-            let imagesChanged = false;
-            const output = app.nodeOutputs[this.id + ''];
-            if (output && output.images) {
-                if (this.images !== output.images) {
-                    this.images = output.images;
+    });
+    Object.setPrototypeOf(node, {
+        onDrawBackground: function (ctx) {
+            if (!this.flags.collapsed) {
+                let imgURLs = [];
+                let imagesChanged = false;
+                const output = app.nodeOutputs[this.id + ''];
+                if (output && output.images) {
+                    if (this.images !== output.images) {
+                        this.images = output.images;
+                        imagesChanged = true;
+                        imgURLs = imgURLs.concat(output.images.map((params) => {
+                            return api.apiURL('/view?' +
+                                new URLSearchParams(params).toString() +
+                                app.getPreviewFormatParam());
+                        }));
+                    }
+                }
+                const preview = app.nodePreviewImages[this.id + ''];
+                if (this.preview !== preview) {
+                    this.preview = preview;
                     imagesChanged = true;
-                    imgURLs = imgURLs.concat(output.images.map((params) => {
-                        return api.apiURL('/view?' +
-                            new URLSearchParams(params).toString() +
-                            app.getPreviewFormatParam());
-                    }));
+                    if (preview != null) {
+                        imgURLs.push(preview);
+                    }
                 }
-            }
-            const preview = app.nodePreviewImages[this.id + ''];
-            if (this.preview !== preview) {
-                this.preview = preview;
-                imagesChanged = true;
-                if (preview != null) {
-                    imgURLs.push(preview);
-                }
-            }
-            if (imagesChanged) {
-                this.imageIndex = null;
-                if (imgURLs.length > 0) {
-                    Promise.all(imgURLs.map((src) => {
-                        return new Promise((r) => {
-                            const img = new Image();
-                            img.onload = () => r(img);
-                            img.onerror = () => r(null);
-                            img.src = src;
+                if (imagesChanged) {
+                    this.imageIndex = null;
+                    if (imgURLs.length > 0) {
+                        Promise.all(imgURLs.map((src) => {
+                            return new Promise((r) => {
+                                const img = new Image();
+                                img.onload = () => r(img);
+                                img.onerror = () => r(null);
+                                img.src = src;
+                            });
+                        })).then((imgs) => {
+                            var _a;
+                            if ((!output || this.images === output.images) &&
+                                (!preview || this.preview === preview)) {
+                                this.imgs = imgs.filter(Boolean);
+                                (_a = this.setSizeForImage) === null || _a === void 0 ? void 0 : _a.call(this);
+                                app.graph.setDirtyCanvas(true);
+                            }
                         });
-                    })).then((imgs) => {
-                        var _a;
-                        if ((!output || this.images === output.images) &&
-                            (!preview || this.preview === preview)) {
-                            this.imgs = imgs.filter(Boolean);
-                            (_a = this.setSizeForImage) === null || _a === void 0 ? void 0 : _a.call(this);
-                            app.graph.setDirtyCanvas(true);
-                        }
-                    });
-                }
-                else {
-                    this.imgs = null;
-                }
-            }
-            if (this.imgs && this.imgs.length) {
-                const canvas = this.graph.list_of_graphcanvas[0];
-                const mouse = canvas.graph_mouse;
-                if (!canvas.pointer_is_down && this.pointerDown) {
-                    if (mouse[0] === this.pointerDown.pos[0] &&
-                        mouse[1] === this.pointerDown.pos[1]) {
-                        this.imageIndex = this.pointerDown.index;
                     }
-                    this.pointerDown = null;
-                }
-                let w = this.imgs[0].naturalWidth;
-                let h = this.imgs[0].naturalHeight;
-                let imageIndex = this.imageIndex;
-                const numImages = this.imgs.length;
-                if (numImages === 1 && !imageIndex) {
-                    this.imageIndex = imageIndex = 0;
-                }
-                const shiftY = getImageTop(this);
-                let dw = this.size[0];
-                let dh = this.size[1];
-                dh -= shiftY;
-                if (imageIndex == null) {
-                    let best = 0;
-                    let cellWidth;
-                    let cellHeight;
-                    let cols = 0;
-                    let shiftX = 0;
-                    for (let c = 1; c <= numImages; c++) {
-                        const rows = Math.ceil(numImages / c);
-                        const cW = dw / c;
-                        const cH = dh / rows;
-                        const scaleX = cW / w;
-                        const scaleY = cH / h;
-                        const scale = Math.min(scaleX, scaleY, 1);
-                        const imageW = w * scale;
-                        const imageH = h * scale;
-                        const area = imageW * imageH * numImages;
-                        if (area > best) {
-                            best = area;
-                            cellWidth = imageW;
-                            cellHeight = imageH;
-                            cols = c;
-                            shiftX = c * ((cW - imageW) / 2);
-                        }
+                    else {
+                        this.imgs = null;
                     }
-                    let anyHovered = false;
-                    this.imageRects = [];
-                    for (let i = 0; i < numImages; i++) {
-                        const img = this.imgs[i];
-                        const row = Math.floor(i / cols);
-                        const col = i % cols;
-                        const x = col * cellWidth + shiftX;
-                        const y = row * cellHeight + shiftY;
-                        if (!anyHovered) {
-                            anyHovered = LiteGraph.isInsideRectangle(mouse[0], mouse[1], x + this.pos[0], y + this.pos[1], cellWidth, cellHeight);
-                            if (anyHovered) {
-                                this.overIndex = i;
-                                let value = 110;
-                                if (canvas.pointer_is_down) {
-                                    if (!this.pointerDown || this.pointerDown.index !== i) {
-                                        this.pointerDown = { index: i, pos: [...mouse] };
-                                    }
-                                    value = 125;
-                                }
-                                ctx.filter = `contrast(${value}%) brightness(${value}%)`;
-                                canvas.canvas.style.cursor = 'pointer';
+                }
+                if (this.imgs && this.imgs.length) {
+                    const canvas = this.graph.list_of_graphcanvas[0];
+                    const mouse = canvas.graph_mouse;
+                    if (!canvas.pointer_is_down && this.pointerDown) {
+                        if (mouse[0] === this.pointerDown.pos[0] &&
+                            mouse[1] === this.pointerDown.pos[1]) {
+                            this.imageIndex = this.pointerDown.index;
+                        }
+                        this.pointerDown = null;
+                    }
+                    let w = this.imgs[0].naturalWidth;
+                    let h = this.imgs[0].naturalHeight;
+                    let imageIndex = this.imageIndex;
+                    const numImages = this.imgs.length;
+                    if (numImages === 1 && !imageIndex) {
+                        this.imageIndex = imageIndex = 0;
+                    }
+                    const shiftY = getImageTop(this);
+                    let dw = this.size[0];
+                    let dh = this.size[1];
+                    dh -= shiftY;
+                    if (imageIndex == null) {
+                        let best = 0;
+                        let cellWidth;
+                        let cellHeight;
+                        let cols = 0;
+                        let shiftX = 0;
+                        for (let c = 1; c <= numImages; c++) {
+                            const rows = Math.ceil(numImages / c);
+                            const cW = dw / c;
+                            const cH = dh / rows;
+                            const scaleX = cW / w;
+                            const scaleY = cH / h;
+                            const scale = Math.min(scaleX, scaleY, 1);
+                            const imageW = w * scale;
+                            const imageH = h * scale;
+                            const area = imageW * imageH * numImages;
+                            if (area > best) {
+                                best = area;
+                                cellWidth = imageW;
+                                cellHeight = imageH;
+                                cols = c;
+                                shiftX = c * ((cW - imageW) / 2);
                             }
                         }
-                        this.imageRects.push([x, y, cellWidth, cellHeight]);
-                        ctx.drawImage(img, x, y, cellWidth, cellHeight);
-                        ctx.filter = 'none';
+                        let anyHovered = false;
+                        this.imageRects = [];
+                        for (let i = 0; i < numImages; i++) {
+                            const img = this.imgs[i];
+                            const row = Math.floor(i / cols);
+                            const col = i % cols;
+                            const x = col * cellWidth + shiftX;
+                            const y = row * cellHeight + shiftY;
+                            if (!anyHovered) {
+                                anyHovered = LiteGraph.isInsideRectangle(mouse[0], mouse[1], x + this.pos[0], y + this.pos[1], cellWidth, cellHeight);
+                                if (anyHovered) {
+                                    this.overIndex = i;
+                                    let value = 110;
+                                    if (canvas.pointer_is_down) {
+                                        if (!this.pointerDown || this.pointerDown.index !== i) {
+                                            this.pointerDown = { index: i, pos: [...mouse] };
+                                        }
+                                        value = 125;
+                                    }
+                                    ctx.filter = `contrast(${value}%) brightness(${value}%)`;
+                                    canvas.canvas.style.cursor = 'pointer';
+                                }
+                            }
+                            this.imageRects.push([x, y, cellWidth, cellHeight]);
+                            ctx.drawImage(img, x, y, cellWidth, cellHeight);
+                            ctx.filter = 'none';
+                        }
+                        if (!anyHovered) {
+                            this.pointerDown = null;
+                            this.overIndex = null;
+                        }
                     }
-                    if (!anyHovered) {
-                        this.pointerDown = null;
-                        this.overIndex = null;
-                    }
-                }
-                else {
-                    const scaleX = dw / w;
-                    const scaleY = dh / h;
-                    const scale = Math.min(scaleX, scaleY, 1);
-                    w *= scale;
-                    h *= scale;
-                    let x = (dw - w) / 2;
-                    let y = (dh - h) / 2 + shiftY;
-                    ctx.drawImage(this.imgs[imageIndex], x, y, w, h);
-                    const drawButton = (x, y, sz, text) => {
-                        const hovered = LiteGraph.isInsideRectangle(mouse[0], mouse[1], x + this.pos[0], y + this.pos[1], sz, sz);
-                        let fill = '#333';
-                        let textFill = '#fff';
-                        let isClicking = false;
-                        if (hovered) {
-                            canvas.canvas.style.cursor = 'pointer';
-                            if (canvas.pointer_is_down) {
-                                fill = '#1e90ff';
-                                isClicking = true;
+                    else {
+                        const scaleX = dw / w;
+                        const scaleY = dh / h;
+                        const scale = Math.min(scaleX, scaleY, 1);
+                        w *= scale;
+                        h *= scale;
+                        let x = (dw - w) / 2;
+                        let y = (dh - h) / 2 + shiftY;
+                        ctx.drawImage(this.imgs[imageIndex], x, y, w, h);
+                        const drawButton = (x, y, sz, text) => {
+                            const hovered = LiteGraph.isInsideRectangle(mouse[0], mouse[1], x + this.pos[0], y + this.pos[1], sz, sz);
+                            let fill = '#333';
+                            let textFill = '#fff';
+                            let isClicking = false;
+                            if (hovered) {
+                                canvas.canvas.style.cursor = 'pointer';
+                                if (canvas.pointer_is_down) {
+                                    fill = '#1e90ff';
+                                    isClicking = true;
+                                }
+                                else {
+                                    fill = '#eee';
+                                    textFill = '#000';
+                                }
                             }
                             else {
-                                fill = '#eee';
-                                textFill = '#000';
+                                this.pointerWasDown = null;
                             }
-                        }
-                        else {
-                            this.pointerWasDown = null;
-                        }
-                        ctx.fillStyle = fill;
-                        ctx.beginPath();
-                        ctx.roundRect(x, y, sz, sz, [4]);
-                        ctx.fill();
-                        ctx.fillStyle = textFill;
-                        ctx.font = '12px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(text, x + 15, y + 20);
-                        return isClicking;
-                    };
-                    if (numImages > 1) {
-                        if (drawButton(x + w - 35, y + h - 35, 30, `${this.imageIndex + 1}/${numImages}`)) {
-                            let i = this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1;
-                            if (!this.pointerDown || !this.pointerDown.index === i) {
-                                this.pointerDown = { index: i, pos: [...mouse] };
+                            ctx.fillStyle = fill;
+                            ctx.beginPath();
+                            ctx.roundRect(x, y, sz, sz, [4]);
+                            ctx.fill();
+                            ctx.fillStyle = textFill;
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(text, x + 15, y + 20);
+                            return isClicking;
+                        };
+                        if (numImages > 1) {
+                            if (drawButton(x + w - 35, y + h - 35, 30, `${this.imageIndex + 1}/${numImages}`)) {
+                                let i = this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1;
+                                if (!this.pointerDown || !this.pointerDown.index === i) {
+                                    this.pointerDown = { index: i, pos: [...mouse] };
+                                }
                             }
-                        }
-                        if (drawButton(x + w - 35, y + 5, 30, `x`)) {
-                            if (!this.pointerDown || !this.pointerDown.index === null) {
-                                this.pointerDown = { index: null, pos: [...mouse] };
+                            if (drawButton(x + w - 35, y + 5, 30, `x`)) {
+                                if (!this.pointerDown || !this.pointerDown.index === null) {
+                                    this.pointerDown = { index: null, pos: [...mouse] };
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    };
+    });
 }, _ComfyApp_addDrawNodeHandler = function _ComfyApp_addDrawNodeHandler() {
     const origDrawNodeShape = LGraphCanvas.prototype.drawNodeShape;
     const self = this;

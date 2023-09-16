@@ -1,6 +1,5 @@
 import { api } from './api.js'
 import { ComfyWidgets } from './widgets.js'
-import { ComfyNode } from './node.js'
 import { ComfyUI, $el } from './ui.js'
 import { defaultGraph } from './defaultGraph.js'
 import { ComfyLogging } from './logging.js'
@@ -18,6 +17,9 @@ export class ComfyApp {
    */
   #processingQueue: boolean = false
 
+  /**
+   * User interface (UI) instance for the app
+   */
   ui: ComfyUI
 
   /**
@@ -31,39 +33,63 @@ export class ComfyApp {
   nodeOutputs: Record<string, any>
 
   /**
-   * graph canvas element
+   * Reference to the graph canvas element
    */
   canvasEl: HTMLCanvasElement
 
   /**
-   * litegraph
+   * Litegraph graph instance
    */
   graph: LGraph
 
   /**
-   * litegraph canvas context
+   * Litegraph canvas context
    */
   canvas: LGraphCanvas
 
+  /**
+   * 2D rendering context for the canvas
+   */
   ctx: CanvasRenderingContext2D
 
   /**
-   * The last node errors.
+   * An array that stores the errors of the last executed node
    */
   lastNodeErrors: []
 
+  /**
+   * The last execution error
+   */
   lastExecutionError: any
 
+  /**
+   * The ID of the currently running node
+   */
   runningNodeId: any
 
+  /**
+   * Progress information object, including current value and maximum value
+   */
   progress: { value: number; max: number }
 
+  /**
+   * The node that is currently being dragged over
+   */
   dragOverNode: LGraphNode
 
+  /**
+   * Logging utility instance
+   */
   logging: ComfyLogging
 
+  /**
+   * Stores preview images for nodes
+   */
   nodePreviewImages: Record<string, string[]>
 
+  /**
+   * Constructor for the class
+   */
   constructor() {
     this.ui = new ComfyUI(this)
     this.logging = new ComfyLogging(this)
@@ -89,9 +115,7 @@ export class ComfyApp {
     const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph))
     this.ctx = canvasEl.getContext('2d')
 
-    // @ts-ignore
     LiteGraph.release_link_on_empty_shows_menu = true
-    // @ts-ignore
     LiteGraph.alt_drag_do_clone_nodes = true
 
     this.graph.start()
@@ -169,10 +193,92 @@ export class ComfyApp {
       ...(await this.#invokeExtensionsAsync('getIWidgets')).filter(Boolean)
     )
 
+    console.log('Registering nodes', defs)
+
     // Register a node for each definition
     for (const nodeId in defs) {
       const nodeData = defs[nodeId]
-      const node = Object.assign(new ComfyNode(nodeData, widgets, this), {
+
+      class ComfyNode implements IPrototype {
+        imgs?: Record<string, any>
+        inputHeight?: number
+        widgets: IWidget[]
+        comfyClass?: string
+        imageOffset?: number
+
+        prototype: any
+
+        constructor(title?: string) {
+          // 把当前类的属性都挂载一份到 prototype 里面
+          this.prototype = Object.getPrototypeOf(this)
+
+          // @ts-ignore
+          const that = this as LGraphNode
+
+          var inputs = nodeData['input']['required']
+          if (nodeData['input']['optional'] != undefined) {
+            inputs = Object.assign(
+              {},
+              nodeData['input']['required'],
+              nodeData['input']['optional']
+            )
+          }
+          const config = { minWidth: 1, minHeight: 1 }
+          for (const inputName in inputs) {
+            const inputData = inputs[inputName]
+            const type = inputData[0]
+
+            if (inputData[1]?.forceInput) {
+              that.addInput(inputName, type as string)
+            } else {
+              if (Array.isArray(type)) {
+                // Enums
+                Object.assign(
+                  config,
+                  widgets.COMBO(this, inputName, inputData, app) || {}
+                )
+              } else if (`${type}:${inputName}` in widgets) {
+                // Support custom widgets by Type:Name
+                Object.assign(
+                  config,
+                  widgets[`${type}:${inputName}`](
+                    this,
+                    inputName,
+                    inputData,
+                    app
+                  ) || {}
+                )
+              } else if (type in widgets) {
+                // Standard type widgets
+                Object.assign(
+                  config,
+                  widgets[type](this, inputName, inputData, app) || {}
+                )
+              } else {
+                // Node connection inputs
+                that.addInput(inputName, type)
+              }
+            }
+          }
+
+          for (const o in nodeData['output']) {
+            const output = nodeData['output'][o]
+            const outputName = nodeData['output_name'][o] || output
+            const outputShape = nodeData['output_is_list'][o]
+              ? LiteGraph.GRID_SHAPE
+              : LiteGraph.CIRCLE_SHAPE
+            that.addOutput(outputName, output, { shape: outputShape })
+          }
+
+          const s = that.computeSize()
+          s[0] = Math.max(config.minWidth, s[0] * 1.5)
+          s[1] = Math.max(config.minHeight, s[1])
+          that.size = s
+          that.serialize_widgets = true
+        }
+      }
+
+      const node = Object.assign(ComfyNode, {
         title: nodeData.display_name || nodeData.name,
         comfyClass: nodeData.name,
         category: nodeData.category
@@ -180,9 +286,11 @@ export class ComfyApp {
 
       node.comfyClass = nodeData.name
 
-      this.#addDrawBackgroundHandler(node)
+      this.#addDrawBackgroundHandler(node as any)
 
       await this.#invokeExtensionsAsync('beforeRegisterNodeDef', node, nodeData)
+
+      console.log('Registering node', node.prototype)
       LiteGraph.registerNodeType(nodeId, node)
     }
   }
@@ -450,10 +558,10 @@ export class ComfyApp {
    * e.g. Draws images and handles thumbnail navigation on nodes that output images
    * @param {*} node The node to add the draw handler
    */
-  #addDrawBackgroundHandler(node: ComfyNode) {
+  #addDrawBackgroundHandler(node: LGraphNode) {
     const app = this
 
-    function getImageTop(node: ComfyNode) {
+    function getImageTop(node: LGraphNode) {
       let shiftY
       if (node.imageOffset != null) {
         shiftY = node.imageOffset
@@ -475,244 +583,248 @@ export class ComfyApp {
       return shiftY
     }
 
-    node.setSizeForImage = function () {
-      if (this.inputHeight) {
-        this.setSize(this.size)
-        return
-      }
-      const minHeight = getImageTop(this) + 220
-      if (this.size[1] < minHeight) {
-        this.setSize([this.size[0], minHeight])
-      }
-    }
-
-    node.onDrawBackground = function (ctx) {
-      if (!this.flags.collapsed) {
-        let imgURLs = []
-        let imagesChanged = false
-
-        const output = app.nodeOutputs[this.id + '']
-        if (output && output.images) {
-          if (this.images !== output.images) {
-            this.images = output.images
-            imagesChanged = true
-            imgURLs = imgURLs.concat(
-              output.images.map((params) => {
-                return api.apiURL(
-                  '/view?' +
-                    new URLSearchParams(params).toString() +
-                    app.getPreviewFormatParam()
-                )
-              })
-            )
-          }
+    Object.setPrototypeOf(node, {
+      setSizeForImage: function () {
+        if (this.inputHeight) {
+          this.setSize(this.size)
+          return
         }
-
-        const preview = app.nodePreviewImages[this.id + '']
-        if (this.preview !== preview) {
-          this.preview = preview
-          imagesChanged = true
-          if (preview != null) {
-            imgURLs.push(preview)
-          }
+        const minHeight = getImageTop(this) + 220
+        if (this.size[1] < minHeight) {
+          this.setSize([this.size[0], minHeight])
         }
+      }
+    })
 
-        if (imagesChanged) {
-          this.imageIndex = null
-          if (imgURLs.length > 0) {
-            Promise.all(
-              imgURLs.map((src) => {
-                return new Promise((r) => {
-                  const img = new Image()
-                  img.onload = () => r(img)
-                  img.onerror = () => r(null)
-                  img.src = src
+    Object.setPrototypeOf(node, {
+      onDrawBackground: function (ctx) {
+        if (!this.flags.collapsed) {
+          let imgURLs = []
+          let imagesChanged = false
+
+          const output = app.nodeOutputs[this.id + '']
+          if (output && output.images) {
+            if (this.images !== output.images) {
+              this.images = output.images
+              imagesChanged = true
+              imgURLs = imgURLs.concat(
+                output.images.map((params) => {
+                  return api.apiURL(
+                    '/view?' +
+                      new URLSearchParams(params).toString() +
+                      app.getPreviewFormatParam()
+                  )
                 })
+              )
+            }
+          }
+
+          const preview = app.nodePreviewImages[this.id + '']
+          if (this.preview !== preview) {
+            this.preview = preview
+            imagesChanged = true
+            if (preview != null) {
+              imgURLs.push(preview)
+            }
+          }
+
+          if (imagesChanged) {
+            this.imageIndex = null
+            if (imgURLs.length > 0) {
+              Promise.all(
+                imgURLs.map((src) => {
+                  return new Promise((r) => {
+                    const img = new Image()
+                    img.onload = () => r(img)
+                    img.onerror = () => r(null)
+                    img.src = src
+                  })
+                })
+              ).then((imgs) => {
+                if (
+                  (!output || this.images === output.images) &&
+                  (!preview || this.preview === preview)
+                ) {
+                  this.imgs = imgs.filter(Boolean)
+                  this.setSizeForImage?.()
+                  app.graph.setDirtyCanvas(true)
+                }
               })
-            ).then((imgs) => {
+            } else {
+              this.imgs = null
+            }
+          }
+
+          if (this.imgs && this.imgs.length) {
+            const canvas = this.graph.list_of_graphcanvas[0]
+            const mouse = canvas.graph_mouse
+            if (!canvas.pointer_is_down && this.pointerDown) {
               if (
-                (!output || this.images === output.images) &&
-                (!preview || this.preview === preview)
+                mouse[0] === this.pointerDown.pos[0] &&
+                mouse[1] === this.pointerDown.pos[1]
               ) {
-                this.imgs = imgs.filter(Boolean)
-                this.setSizeForImage?.()
-                app.graph.setDirtyCanvas(true)
+                this.imageIndex = this.pointerDown.index
               }
-            })
-          } else {
-            this.imgs = null
-          }
-        }
-
-        if (this.imgs && this.imgs.length) {
-          const canvas = this.graph.list_of_graphcanvas[0]
-          const mouse = canvas.graph_mouse
-          if (!canvas.pointer_is_down && this.pointerDown) {
-            if (
-              mouse[0] === this.pointerDown.pos[0] &&
-              mouse[1] === this.pointerDown.pos[1]
-            ) {
-              this.imageIndex = this.pointerDown.index
-            }
-            this.pointerDown = null
-          }
-
-          let w = this.imgs[0].naturalWidth
-          let h = this.imgs[0].naturalHeight
-          let imageIndex = this.imageIndex
-          const numImages = this.imgs.length
-          if (numImages === 1 && !imageIndex) {
-            this.imageIndex = imageIndex = 0
-          }
-
-          const shiftY = getImageTop(this)
-
-          let dw = this.size[0]
-          let dh = this.size[1]
-          dh -= shiftY
-
-          if (imageIndex == null) {
-            let best = 0
-            let cellWidth
-            let cellHeight
-            let cols = 0
-            let shiftX = 0
-            for (let c = 1; c <= numImages; c++) {
-              const rows = Math.ceil(numImages / c)
-              const cW = dw / c
-              const cH = dh / rows
-              const scaleX = cW / w
-              const scaleY = cH / h
-
-              const scale = Math.min(scaleX, scaleY, 1)
-              const imageW = w * scale
-              const imageH = h * scale
-              const area = imageW * imageH * numImages
-
-              if (area > best) {
-                best = area
-                cellWidth = imageW
-                cellHeight = imageH
-                cols = c
-                shiftX = c * ((cW - imageW) / 2)
-              }
+              this.pointerDown = null
             }
 
-            let anyHovered = false
-            this.imageRects = []
-            for (let i = 0; i < numImages; i++) {
-              const img = this.imgs[i]
-              const row = Math.floor(i / cols)
-              const col = i % cols
-              const x = col * cellWidth + shiftX
-              const y = row * cellHeight + shiftY
+            let w = this.imgs[0].naturalWidth
+            let h = this.imgs[0].naturalHeight
+            let imageIndex = this.imageIndex
+            const numImages = this.imgs.length
+            if (numImages === 1 && !imageIndex) {
+              this.imageIndex = imageIndex = 0
+            }
+
+            const shiftY = getImageTop(this)
+
+            let dw = this.size[0]
+            let dh = this.size[1]
+            dh -= shiftY
+
+            if (imageIndex == null) {
+              let best = 0
+              let cellWidth
+              let cellHeight
+              let cols = 0
+              let shiftX = 0
+              for (let c = 1; c <= numImages; c++) {
+                const rows = Math.ceil(numImages / c)
+                const cW = dw / c
+                const cH = dh / rows
+                const scaleX = cW / w
+                const scaleY = cH / h
+
+                const scale = Math.min(scaleX, scaleY, 1)
+                const imageW = w * scale
+                const imageH = h * scale
+                const area = imageW * imageH * numImages
+
+                if (area > best) {
+                  best = area
+                  cellWidth = imageW
+                  cellHeight = imageH
+                  cols = c
+                  shiftX = c * ((cW - imageW) / 2)
+                }
+              }
+
+              let anyHovered = false
+              this.imageRects = []
+              for (let i = 0; i < numImages; i++) {
+                const img = this.imgs[i]
+                const row = Math.floor(i / cols)
+                const col = i % cols
+                const x = col * cellWidth + shiftX
+                const y = row * cellHeight + shiftY
+                if (!anyHovered) {
+                  anyHovered = LiteGraph.isInsideRectangle(
+                    mouse[0],
+                    mouse[1],
+                    x + this.pos[0],
+                    y + this.pos[1],
+                    cellWidth,
+                    cellHeight
+                  )
+                  if (anyHovered) {
+                    this.overIndex = i
+                    let value = 110
+                    if (canvas.pointer_is_down) {
+                      if (!this.pointerDown || this.pointerDown.index !== i) {
+                        this.pointerDown = { index: i, pos: [...mouse] }
+                      }
+                      value = 125
+                    }
+                    ctx.filter = `contrast(${value}%) brightness(${value}%)`
+                    canvas.canvas.style.cursor = 'pointer'
+                  }
+                }
+                this.imageRects.push([x, y, cellWidth, cellHeight])
+                ctx.drawImage(img, x, y, cellWidth, cellHeight)
+                ctx.filter = 'none'
+              }
+
               if (!anyHovered) {
-                anyHovered = LiteGraph.isInsideRectangle(
+                this.pointerDown = null
+                this.overIndex = null
+              }
+            } else {
+              // Draw individual
+              const scaleX = dw / w
+              const scaleY = dh / h
+              const scale = Math.min(scaleX, scaleY, 1)
+
+              w *= scale
+              h *= scale
+
+              let x = (dw - w) / 2
+              let y = (dh - h) / 2 + shiftY
+              ctx.drawImage(this.imgs[imageIndex], x, y, w, h)
+
+              const drawButton = (x, y, sz, text) => {
+                const hovered = LiteGraph.isInsideRectangle(
                   mouse[0],
                   mouse[1],
                   x + this.pos[0],
                   y + this.pos[1],
-                  cellWidth,
-                  cellHeight
+                  sz,
+                  sz
                 )
-                if (anyHovered) {
-                  this.overIndex = i
-                  let value = 110
-                  if (canvas.pointer_is_down) {
-                    if (!this.pointerDown || this.pointerDown.index !== i) {
-                      this.pointerDown = { index: i, pos: [...mouse] }
-                    }
-                    value = 125
-                  }
-                  ctx.filter = `contrast(${value}%) brightness(${value}%)`
+                let fill = '#333'
+                let textFill = '#fff'
+                let isClicking = false
+                if (hovered) {
                   canvas.canvas.style.cursor = 'pointer'
-                }
-              }
-              this.imageRects.push([x, y, cellWidth, cellHeight])
-              ctx.drawImage(img, x, y, cellWidth, cellHeight)
-              ctx.filter = 'none'
-            }
-
-            if (!anyHovered) {
-              this.pointerDown = null
-              this.overIndex = null
-            }
-          } else {
-            // Draw individual
-            const scaleX = dw / w
-            const scaleY = dh / h
-            const scale = Math.min(scaleX, scaleY, 1)
-
-            w *= scale
-            h *= scale
-
-            let x = (dw - w) / 2
-            let y = (dh - h) / 2 + shiftY
-            ctx.drawImage(this.imgs[imageIndex], x, y, w, h)
-
-            const drawButton = (x, y, sz, text) => {
-              const hovered = LiteGraph.isInsideRectangle(
-                mouse[0],
-                mouse[1],
-                x + this.pos[0],
-                y + this.pos[1],
-                sz,
-                sz
-              )
-              let fill = '#333'
-              let textFill = '#fff'
-              let isClicking = false
-              if (hovered) {
-                canvas.canvas.style.cursor = 'pointer'
-                if (canvas.pointer_is_down) {
-                  fill = '#1e90ff'
-                  isClicking = true
+                  if (canvas.pointer_is_down) {
+                    fill = '#1e90ff'
+                    isClicking = true
+                  } else {
+                    fill = '#eee'
+                    textFill = '#000'
+                  }
                 } else {
-                  fill = '#eee'
-                  textFill = '#000'
+                  this.pointerWasDown = null
                 }
-              } else {
-                this.pointerWasDown = null
+
+                ctx.fillStyle = fill
+                ctx.beginPath()
+                ctx.roundRect(x, y, sz, sz, [4])
+                ctx.fill()
+                ctx.fillStyle = textFill
+                ctx.font = '12px Arial'
+                ctx.textAlign = 'center'
+                ctx.fillText(text, x + 15, y + 20)
+
+                return isClicking
               }
 
-              ctx.fillStyle = fill
-              ctx.beginPath()
-              ctx.roundRect(x, y, sz, sz, [4])
-              ctx.fill()
-              ctx.fillStyle = textFill
-              ctx.font = '12px Arial'
-              ctx.textAlign = 'center'
-              ctx.fillText(text, x + 15, y + 20)
-
-              return isClicking
-            }
-
-            if (numImages > 1) {
-              if (
-                drawButton(
-                  x + w - 35,
-                  y + h - 35,
-                  30,
-                  `${this.imageIndex + 1}/${numImages}`
-                )
-              ) {
-                let i =
-                  this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1
-                if (!this.pointerDown || !this.pointerDown.index === i) {
-                  this.pointerDown = { index: i, pos: [...mouse] }
+              if (numImages > 1) {
+                if (
+                  drawButton(
+                    x + w - 35,
+                    y + h - 35,
+                    30,
+                    `${this.imageIndex + 1}/${numImages}`
+                  )
+                ) {
+                  let i =
+                    this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1
+                  if (!this.pointerDown || !this.pointerDown.index === i) {
+                    this.pointerDown = { index: i, pos: [...mouse] }
+                  }
                 }
-              }
 
-              if (drawButton(x + w - 35, y + 5, 30, `x`)) {
-                if (!this.pointerDown || !this.pointerDown.index === null) {
-                  this.pointerDown = { index: null, pos: [...mouse] }
+                if (drawButton(x + w - 35, y + 5, 30, `x`)) {
+                  if (!this.pointerDown || !this.pointerDown.index === null) {
+                    this.pointerDown = { index: null, pos: [...mouse] }
+                  }
                 }
               }
             }
           }
         }
       }
-    }
+    })
   }
 
   /**
@@ -975,9 +1087,7 @@ export class ComfyApp {
             if (parent.isVirtualNode) {
               link = parent.getInputLink(link.origin_slot)
               if (link) {
-                parent = parent.getInputNode(
-                  link.target_slot
-                ) as LGraphNode
+                parent = parent.getInputNode(link.target_slot) as LGraphNode
                 if (parent) {
                   found = true
                 }
@@ -995,9 +1105,7 @@ export class ComfyApp {
                   ) {
                     link = parent.getInputLink(parent_input)
                     if (link) {
-                      parent = parent.getInputNode(
-                        parent_input
-                      ) as LGraphNode
+                      parent = parent.getInputNode(parent_input) as LGraphNode
                     }
                     found = true
                     break

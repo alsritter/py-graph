@@ -28,7 +28,10 @@ export declare class ComfyLogging {
     unpatchConsole(): void;
     catchUnhandled(): void;
     clear(): void;
-    addEntry(source: any, type: any, ...args: any[]): void;
+    addEntry(source: string, type: string, ...args: {
+        UserAgent?: string;
+        MissingNodes?: any[];
+    }[]): void;
     log(source: any, ...args: any[]): void;
     addInitData(): Promise<void>;
 }

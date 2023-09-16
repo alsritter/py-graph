@@ -178,7 +178,7 @@ function addMultilineWidget(node, name, opts, app) {
     });
     widget.parent = node;
     document.body.appendChild(widget.inputEl);
-    node.addIWidget(widget);
+    node.addCustomWidget(widget);
     app.canvas.onDrawBackground = function () {
         for (let i in app.graph._nodes) {
             const n = app.graph._nodes[i];

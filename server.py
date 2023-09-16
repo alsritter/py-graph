@@ -3,6 +3,7 @@ from typing import Optional, Dict
 from io import BytesIO
 from PIL import Image, ImageOps
 import aiohttp
+import sys
 import asyncio
 import uuid
 import mimetypes  # 映射文件名到 MIME 类型
@@ -117,6 +118,20 @@ class PyGraphServer:
         @routes.get("/")
         async def get_root(request: web.Request):
             return web.FileResponse(os.path.join(self.web_root, "index.html"))
+
+        @routes.get("/system_stats")
+        async def get_queue(request):
+            system_stats = {
+                "system": {
+                    "os": os.name,
+                    "python_version": sys.version,
+                    "embedded_python": os.path.split(os.path.split(sys.executable)[0])[
+                        1
+                    ]
+                    == "python_embeded",
+                }
+            }
+            return web.json_response(system_stats)
 
         @routes.get("/extensions")
         async def get_extensions(request: web.Request):
@@ -269,7 +284,7 @@ class PyGraphServer:
             await self.send_bytes(event, data, sid)
         else:
             await self.send_json(event, data, sid)
-    
+
     # 用于发送二进制数据的函数
     async def send_bytes(
         self, event: int, data: bytes, sid: Optional[str] = None
@@ -287,7 +302,7 @@ class PyGraphServer:
         image = image_data[1]
         max_size = image_data[2]
         if max_size is not None:
-            if hasattr(Image, 'Resampling'):
+            if hasattr(Image, "Resampling"):
                 resampling = Image.Resampling.BILINEAR
             else:
                 resampling = Image.ANTIALIAS
@@ -306,7 +321,7 @@ class PyGraphServer:
         image.save(bytesIO, format=image_type, quality=95, compress_level=4)
         preview_bytes = bytesIO.getvalue()
         await self.send_bytes(BinaryEventTypes.PREVIEW_IMAGE, preview_bytes, sid=sid)
-    
+
     # 用于发送 JSON 数据的函数
     async def send_bytes(self, event, data, sid=None):
         message = self.encode_bytes(event, data)
