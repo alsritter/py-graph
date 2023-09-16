@@ -272,12 +272,14 @@ export class ComfyApp {
       )
 
       node.prototype.comfyClass = nodeData.name
-      node.prototype.category = nodeData.category
-
+      
       this.#addDrawBackgroundHandler(node as any)
-
+      
       await this.#invokeExtensionsAsync('beforeRegisterNodeDef', node, nodeData)
       LiteGraph.registerNodeType(nodeId, node)
+
+      // 注意需要在注册类型后，再设置 node 的 category 属性，否则会被覆盖
+      node.category = nodeData.category
     }
   }
 

@@ -147,10 +147,10 @@ export class ComfyApp {
                     category: nodeData.category
                 });
                 node.prototype.comfyClass = nodeData.name;
-                node.prototype.category = nodeData.category;
                 __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_addDrawBackgroundHandler).call(this, node);
                 yield __classPrivateFieldGet(this, _ComfyApp_instances, "m", _ComfyApp_invokeExtensionsAsync).call(this, 'beforeRegisterNodeDef', node, nodeData);
                 LiteGraph.registerNodeType(nodeId, node);
+                node.category = nodeData.category;
             }
         });
     }
