@@ -1002,18 +1002,18 @@ export declare class LGraphNode {
   /**
    * if returns false the incoming connection will be canceled
    * Called by `LGraph.connect`
-   * @param outputIndex target output slot number
-   * @param inputType type of input slot
-   * @param inputSlot input slot object
-   * @param inputNode node containing the input
-   * @param inputIndex index of input slot
+   * @param slot target output slot number
+   * @param type type of input slot
+   * @param input input slot object
+   * @param target_node node containing the input
+   * @param target_slot index of input slot
    */
   onConnectOutput?(
-    outputIndex: number,
-    inputType: INodeInputSlot['type'],
-    inputSlot: INodeInputSlot,
-    inputNode: LGraphNode,
-    inputIndex: number
+    slot: number,
+    type: INodeInputSlot['type'],
+    input: INodeInputSlot,
+    target_node: LGraphNode,
+    target_slot: number
   ): boolean
 
   /**

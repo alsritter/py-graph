@@ -2,12 +2,7 @@ import { app } from '../../scripts/app.js'
 import type { ComfyApp } from '../../scripts/app.js'
 import { ComfyWidgets } from '../../scripts/widgets.js'
 import { ComfyExtension, ComfyObjectInfo } from '../../types/comfy'
-import {
-  IWidget,
-  LGraph,
-  LGraphCanvas,
-  LiteGraph
-} from '../../types/litegraph.js'
+import { LiteGraph } from '../../types/litegraph.js'
 // Adds defaults for quickly adding nodes with middle click on the input/output
 
 const extensionObj: ComfyExtension = {

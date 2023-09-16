@@ -1,5 +1,6 @@
 import { ComfyWidgets, addValueControlWidget } from '../../scripts/widgets.js'
 import { app } from '../../scripts/app.js'
+import { LGraphNode, LiteGraph, INodeInputSlot } from '../../types/litegraph.js'
 
 const CONVERTED_TYPE = 'converted-widget'
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN']
@@ -135,32 +136,17 @@ app.registerExtension({
 
   /**
    * 在注册节点定义之前调用的异步函数。
-   * @param {LGraphNode} nodeType - 要注册的节点类型。
-   * @param {Object} nodeData - 节点数据对象。
-   * @param {Object} app - 应用程序对象。
-   * @returns {Promise} - 异步操作的 Promise 对象。
+   * @param nodeType - 要注册的节点类型。
+   * @param nodeData - 节点数据对象。
+   * @param app - 应用程序对象。
+   * @returns - 异步操作的 Promise 对象。
    */
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
 
-    // const onAdded = nodeType.prototype.onAdded;
-    // nodeType.prototype.onAdded = function () {
-    // 	const r = onAdded ? onAdded.apply(this, arguments) : undefined;
-    // 	console.log("onAdded", JSON.stringify(this.properties));
-    // 	if (this.widgets) {
-    // 		for (const w of this.widgets) {
-    // 			if (w.options && w.options.defaultInput) {
-    // 				const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
-    // 				convertToInput(this, w, config);
-    // 			}
-    // 		}
-    // 	}
-    // 	return r;
-    // }
-
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
-    const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions
+    const origGetExtraMenuOptions = nodeType.getExtraMenuOptions
     nodeType.prototype.getExtraMenuOptions = function (_, options) {
       const r = origGetExtraMenuOptions
         ? origGetExtraMenuOptions.apply(this, arguments)
@@ -285,8 +271,12 @@ app.registerExtension({
     }
   },
   registerCustomNodes() {
-    class PrimitiveNode {
+    class PrimitiveNode extends LGraphNode {
+      static category: 'utils'
+      isVirtualNode: boolean
+
       constructor() {
+        super()
         this.addOutput('connect to widget input', '*')
         this.serialize_widgets = true
         this.isVirtualNode = true
@@ -351,7 +341,13 @@ app.registerExtension({
         }
       }
 
-      onConnectOutput(slot, type, input, target_node, target_slot) {
+      onConnectOutput(
+        slot: number,
+        type: INodeInputSlot['type'],
+        input: INodeInputSlot,
+        target_node: LGraphNode,
+        target_slot: number
+      ) {
         // Fires before the link is made allowing us to reject it if it isn't valid
 
         // No widget, we cant connect
@@ -362,6 +358,8 @@ app.registerExtension({
         if (this.outputs[slot].links?.length) {
           return this.#isValidConnection(input)
         }
+
+        return true
       }
 
       #onFirstConnection() {
@@ -502,6 +500,5 @@ app.registerExtension({
         title: 'Primitive'
       })
     )
-    PrimitiveNode.category = 'utils'
   }
 })
