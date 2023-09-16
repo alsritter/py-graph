@@ -1,4 +1,4 @@
-import { LGraphNode, IWidget } from './litegraph'
+import { LGraphNode, IWidget, Vector2 } from './litegraph'
 import { ComfyApp } from '../scripts/app'
 
 type Merge<M, N> = Omit<M, Extract<keyof M, keyof N>> & N
@@ -74,10 +74,14 @@ export type CustomWidgetCallback<T extends CustomWidget = CustomWidget> = (
 export type CustomWidget = Merge<
   IWidget,
   {
+    origType?: customWidgetTypes
+
     parent?: CustomGraphNode
     type?: customWidgetTypes
     inputEl?: HTMLTextAreaElement
     computedHeight?: number
+
+    linkedWidgets?: CustomWidget[]
 
     onRemove?: () => void
 
@@ -87,16 +91,24 @@ export type CustomWidget = Merge<
      * 在排队后执行的操作
      */
     afterQueued?: () => void
+
+
+    origComputeSize?: () => [number, number]
+    origSerializeValue?: () => any
+
+    serializeValue?: (node?: SerializedLGraphNode<LGraphNode>, index?: string) => any
   }
 >
 
-export type CustomGraphNode = Merge<
+export interface CustomGraphNode extends Merge<
   Partial<LGraphNode>,
   {
     imgs?: Record<string, any>
     inputHeight?: number
     widgets?: CustomWidget[]
     comfyClass?: string
+
+    isVirtualNode?: boolean
 
     addWidget<T extends CustomWidget>(
       type: T['type'],
@@ -113,6 +125,13 @@ export type CustomGraphNode = Merge<
     callback?: (...argArray: any[]) => void
 
     onDrawBackground?: (ctx: CanvasRenderingContext2D) => void
+
+    /**
+     * 应用节点到 Graph 上
+     * @param graph 
+     * @returns 
+     */
+    applyToGraph?: (graph: LGraph) => void
 
     /**
      * 如果是存前端的 Node 可以添加这个回调
@@ -134,15 +153,8 @@ export type CustomGraphNode = Merge<
      * @returns
      */
     onDragOver?: (event: DragEvent) => boolean
-
-    /**
-     * 重新计算节点的高度
-     * @param size
-     * @returns
-     */
-    onResize?: (size?: number) => void
   }
->
+>{}
 
 
 export interface ComfyExtension {

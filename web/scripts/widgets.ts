@@ -30,8 +30,7 @@ function getNumberDefaults(inputData, defaultStep) {
 export function addValueControlWidget(
   node: CustomGraphNode,
   targetWidget: CustomWidget,
-  defaultValue = 'randomize',
-  values
+  defaultValue = 'randomize'
 ) {
   const valueControl = node.addWidget(
     'combo',
@@ -526,4 +525,4 @@ export const ComfyWidgets = {
   }
 }
 
-export type ComfyWidgetsType = (typeof ComfyWidgets)
+export type ComfyWidgetsType = typeof ComfyWidgets

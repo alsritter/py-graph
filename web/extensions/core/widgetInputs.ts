@@ -1,6 +1,7 @@
 import { ComfyWidgets, addValueControlWidget } from '../../scripts/widgets.js'
 import { app } from '../../scripts/app.js'
 import { LGraphNode, LiteGraph, INodeInputSlot } from '../../types/litegraph.js'
+import { CustomGraphNode, CustomWidget } from '../../types/comfy.js'
 
 const CONVERTED_TYPE = 'converted-widget'
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN']
@@ -9,40 +10,13 @@ function isConvertableWidget(widget, config) {
   return VALID_TYPES.includes(widget.type) || VALID_TYPES.includes(config[0])
 }
 
-// 为转成窗口之前这个值是
-// {
-// 	"type": "number",
-// 	"name": "operand2",
-// 	"value": 0,
-// 	"options": {
-// 			"min": 0,
-// 			"max": 2048,
-// 			"step": 5,
-// 			"defaultInput": true
-// 	},
-// 	"last_y": 26
-// }
-
-/**
- * 这个 Widget 类型是 litegraph 的 Widget 类型的子集。
- * https://vscode.dev/github/alsritter/py-graph/blob/main/web/types/litegraph.d.ts#L54
- *
- * @typedef {Object} Widget
- * @property {string} type e.g. "converted-widget"
- * @property {string} name e.g. "operand1"
- * @property {number} value e.g. 1.5
- * @property {Object} options e.g.  { "min": 0, "max": 2048, "step": 5, "defaultInput": true }
- * @property {string} origType e.g. "number"
- * @property {number} last_y e.g. 0 垂直位置
- */
-
 /**
  * 隐藏一个小部件及其所有链接的小部件。
- * @param {Object} node - 包含小部件的节点。
- * @param {Widget} widget - 要隐藏的小部件。
- * @param {string} suffix - 要添加到小部件类型的后缀。
+ * @param node - 包含小部件的节点。
+ * @param widget - 要隐藏的小部件。
+ * @param suffix - 要添加到小部件类型的后缀。
  */
-function hideWidget(node, widget, suffix = '') {
+function hideWidget(node: CustomGraphNode, widget: CustomWidget, suffix = '') {
   // 保存原始小部件属性
   widget.origType = widget.type
   widget.origComputeSize = widget.computeSize
@@ -53,10 +27,13 @@ function hideWidget(node, widget, suffix = '') {
   widget.type = CONVERTED_TYPE + suffix
   widget.serializeValue = () => {
     // 如果没有链接输入，则防止序列化小部件
-    const { link } = node.inputs.find((i) => i.widget?.name === widget.name)
+    const { link } = node.inputs?.find(
+      (i) => i.widget?.name === widget.name
+    ) as INodeInputSlot
     if (link == null) {
       return undefined
     }
+
     return widget.origSerializeValue
       ? widget.origSerializeValue()
       : widget.value
@@ -147,13 +124,20 @@ app.registerExtension({
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeType.getExtraMenuOptions
-    nodeType.prototype.getExtraMenuOptions = function (_, options) {
+    nodeType.getExtraMenuOptions = function (_, options) {
       const r = origGetExtraMenuOptions
         ? origGetExtraMenuOptions.apply(this, arguments)
         : undefined
+
       if (this.widgets) {
-        let toInput = []
-        let toWidget = []
+        type option = {
+          content: string
+          callback: () => void
+        }
+
+        const toInput: option[] = []
+        const toWidget: option[] = []
+
         for (const w of this.widgets) {
           // 正常情况下，点击把小部件转成输入后，这里的 w.type 会变成 converted-widget
           if (w.type === CONVERTED_TYPE) {
@@ -164,8 +148,9 @@ app.registerExtension({
             })
           } else {
             // 否则这里的 w.type 会是原来的类型（number 之类的...）
-            const config = nodeData?.input?.required[w.name] ||
+            const config = nodeData?.input?.required?.[w.name] ||
               nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}]
+
             console.log('convertToInput', w)
             // 这里的 config 其实就是字段的类型定义 [ "FLOAT", { "default_input": true } ]
 
@@ -191,9 +176,9 @@ app.registerExtension({
     }
 
     // 从配置文件里面加载出来的恢复之前的节点（这个函数会在根据配置重新加载时调用）
-    const origOnConfigure = nodeType.prototype.onConfigure
+    const origOnConfigure = nodeType.onConfigure
     // 首先保存原始的 onConfigure 回调函数，然后重写 onConfigure 回调函数，调用原始的 onConfigure 回调函数并保存返回值
-    nodeType.prototype.onConfigure = function () {
+    nodeType.onConfigure = function () {
       const r = origOnConfigure
         ? origOnConfigure.apply(this, arguments)
         : undefined
@@ -229,9 +214,9 @@ app.registerExtension({
      * @param {number} slot - 输入插槽的索引。
      * @returns {*} - 原始 onInputDblClick 方法的返回值。
      */
-    const origOnInputDblClick = nodeType.prototype.onInputDblClick
+    const origOnInputDblClick = nodeType.onInputDblClick
     const ignoreDblClick = Symbol()
-    nodeType.prototype.onInputDblClick = function (slot) {
+    nodeType.onInputDblClick = function (slot) {
       const r = origOnInputDblClick
         ? origOnInputDblClick.apply(this, arguments)
         : undefined
@@ -285,12 +270,14 @@ app.registerExtension({
       applyToGraph() {
         if (!this.outputs[0].links?.length) return
 
-        function get_links(node) {
-          let links = []
+        function get_links(node: LGraphNode) {
+          let links: number[] = []
+          if (!node.outputs[0].links?.length) return links
+
           for (const l of node.outputs[0].links) {
             const linkInfo = app.graph.links[l]
-            const n = node.graph.getNodeById(linkInfo.target_id)
-            if (n.type == 'Reroute') {
+            const n = node?.graph?.getNodeById(linkInfo.target_id)
+            if (n && n.type == 'Reroute') {
               links = links.concat(get_links(n))
             } else {
               links.push(l)
@@ -303,20 +290,19 @@ app.registerExtension({
         // For each output link copy our value over the original widget value
         for (const l of links) {
           const linkInfo = app.graph.links[l]
-          const node = this.graph.getNodeById(linkInfo.target_id)
-          const input = node.inputs[linkInfo.target_slot]
-          const widgetName = input.widget.name
+          const node = this.graph?.getNodeById(linkInfo.target_id)
+          const input = node?.inputs[linkInfo.target_slot]
+          const widgetName = input?.widget?.name
           if (widgetName) {
-            const widget = node.widgets.find((w) => w.name === widgetName)
+            const widget = node?.widgets.find((w) => w.name === widgetName)
             if (widget) {
               widget.value = this.widgets[0].value
               if (widget.callback) {
                 widget.callback(
                   widget.value,
                   app.canvas,
-                  node,
-                  app.canvas.graph_mouse,
-                  {}
+                  node as LGraphNode,
+                  app.canvas.graph_mouse
                 )
               }
             }
@@ -352,7 +338,7 @@ app.registerExtension({
 
         // No widget, we cant connect
         if (!input.widget) {
-          if (!(input.type in ComfyWidgets)) return false
+          if (!input.type || !(input.type in ComfyWidgets)) return false
         }
 
         if (this.outputs[slot].links?.length) {
@@ -364,8 +350,9 @@ app.registerExtension({
 
       #onFirstConnection() {
         // First connection can fire before the graph is ready on initial load so random things can be missing
-        const linkId = this.outputs[0].links[0]
-        const link = this.graph.links[linkId]
+        const linkId = this?.outputs?.[0]?.links?.[0]
+        if (!linkId || !this.graph) return
+        const link = this.graph?.links[linkId]
         if (!link) return
 
         const theirNode = this.graph.getNodeById(link.target_id)
@@ -376,7 +363,7 @@ app.registerExtension({
 
         var _widget
         if (!input.widget) {
-          if (!(input.type in ComfyWidgets)) return
+          if (!input.type || !(input.type in ComfyWidgets)) return
           _widget = { name: input.name, config: [input.type, {}] } //fake widget
         } else {
           _widget = input.widget
@@ -392,7 +379,7 @@ app.registerExtension({
         this.#createWidget(widget.config, theirNode, widget.name)
       }
 
-      #createWidget(inputData, node, widgetName) {
+      #createWidget(inputData, node?, widgetName?) {
         let type = inputData[0]
 
         if (type instanceof Array) {
@@ -415,7 +402,7 @@ app.registerExtension({
         }
 
         if (widget.type === 'number' || widget.type === 'combo') {
-          addValueControlWidget(this, widget, 'fixed')
+          addValueControlWidget(this as CustomGraphNode, widget, 'fixed')
         }
 
         // When our value changes, update other widgets to reflect our changes
@@ -446,7 +433,7 @@ app.registerExtension({
 
       #isValidConnection(input) {
         // Only allow connections where the configs match
-        const config1 = this.outputs[0].widget.config
+        const config1 = this.outputs?.[0]?.widget?.config
         const config2 = input.widget.config
 
         if (config1[0] instanceof Array) {

@@ -19,9 +19,9 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
 var _ComfyList_type, _ComfyList_text;
-import { api } from "./api.js";
+import { api } from './api.js';
 export function $el(tag, propsOrChildren, children) {
-    const split = tag.split(".");
+    const split = tag.split('.');
     const element = document.createElement(split.shift());
     if (split.length > 0) {
         element.classList.add(...split);
@@ -36,8 +36,8 @@ export function $el(tag, propsOrChildren, children) {
             delete propsOrChildren.$;
             delete propsOrChildren.dataset;
             delete propsOrChildren.style;
-            if (Object.hasOwn(propsOrChildren, "for")) {
-                element.setAttribute("for", propsOrChildren.for);
+            if (Object.hasOwn(propsOrChildren, 'for')) {
+                element.setAttribute('for', propsOrChildren.for);
             }
             if (style) {
                 Object.assign(element.style, style);
@@ -61,8 +61,9 @@ export function $el(tag, propsOrChildren, children) {
 }
 function dragElement(dragEl, settings) {
     var posDiffX = 0, posDiffY = 0, posStartX = 0, posStartY = 0, newPosX = 0, newPosY = 0;
-    if (dragEl.getElementsByClassName("drag-handle")[0]) {
-        dragEl.getElementsByClassName("drag-handle")[0].onmousedown = dragMouseDown;
+    if (dragEl.getElementsByClassName('drag-handle')[0]) {
+        ;
+        dragEl.getElementsByClassName('drag-handle')[0].onmousedown = dragMouseDown;
     }
     else {
         dragEl.onmousedown = dragMouseDown;
@@ -71,7 +72,7 @@ function dragElement(dragEl, settings) {
         ensureInBounds();
     }).observe(dragEl);
     function ensureInBounds() {
-        if (dragEl.classList.contains("comfy-menu-manual-pos")) {
+        if (dragEl.classList.contains('comfy-menu-manual-pos')) {
             newPosX = Math.min(document.body.clientWidth - dragEl.clientWidth, Math.max(0, dragEl.offsetLeft));
             newPosY = Math.min(document.body.clientHeight - dragEl.clientHeight, Math.max(0, dragEl.offsetTop));
             positionElement();
@@ -81,25 +82,25 @@ function dragElement(dragEl, settings) {
         const halfWidth = document.body.clientWidth / 2;
         const anchorRight = newPosX + dragEl.clientWidth / 2 > halfWidth;
         if (anchorRight) {
-            dragEl.style.left = "unset";
+            dragEl.style.left = 'unset';
             dragEl.style.right =
-                document.body.clientWidth - newPosX - dragEl.clientWidth + "px";
+                document.body.clientWidth - newPosX - dragEl.clientWidth + 'px';
         }
         else {
-            dragEl.style.left = newPosX + "px";
-            dragEl.style.right = "unset";
+            dragEl.style.left = newPosX + 'px';
+            dragEl.style.right = 'unset';
         }
-        dragEl.style.top = newPosY + "px";
-        dragEl.style.bottom = "unset";
+        dragEl.style.top = newPosY + 'px';
+        dragEl.style.bottom = 'unset';
         if (savePos) {
-            localStorage.setItem("Comfy.MenuPosition", JSON.stringify({
+            localStorage.setItem('Comfy.MenuPosition', JSON.stringify({
                 x: dragEl.offsetLeft,
-                y: dragEl.offsetTop,
+                y: dragEl.offsetTop
             }));
         }
     }
     function restorePos() {
-        const posStr = localStorage.getItem("Comfy.MenuPosition");
+        const posStr = localStorage.getItem('Comfy.MenuPosition');
         if (posStr) {
             const pos = JSON.parse(posStr);
             newPosX = pos.x;
@@ -119,7 +120,7 @@ function dragElement(dragEl, settings) {
     function elementDrag(e) {
         e = e || window.event;
         e.preventDefault();
-        dragEl.classList.add("comfy-menu-manual-pos");
+        dragEl.classList.add('comfy-menu-manual-pos');
         posDiffX = e.clientX - posStartX;
         posDiffY = e.clientY - posStartY;
         posStartX = e.clientX;
@@ -128,7 +129,7 @@ function dragElement(dragEl, settings) {
         newPosY = Math.min(document.body.clientHeight - dragEl.clientHeight, Math.max(0, dragEl.offsetTop + posDiffY));
         positionElement();
     }
-    window.addEventListener("resize", () => {
+    window.addEventListener('resize', () => {
         ensureInBounds();
     });
     function closeDragElement() {
@@ -137,85 +138,88 @@ function dragElement(dragEl, settings) {
     }
     let savePos = undefined;
     settings.addSetting({
-        id: "Comfy.MenuPosition",
-        name: "Save menu position",
-        type: "boolean",
+        id: 'Comfy.MenuPosition',
+        name: 'Save menu position',
+        type: 'boolean',
         defaultValue: savePos,
-        onChange(value) {
+        onChange(value, oldVal) {
             if (savePos === undefined && value) {
                 restorePos();
             }
             savePos = value;
-        },
+        }
     });
 }
 export class ComfyDialog {
     constructor() {
-        this.element = $el("div.comfy-modal", { parent: document.body }, [
-            $el("div.comfy-modal-content", [
-                $el("p", { $: (p) => (this.textElement = p) }),
-                ...this.createButtons(),
-            ]),
+        this.element = null;
+        this.textElement = null;
+        this.element = $el('div.comfy-modal', { parent: document.body }, [
+            $el('div.comfy-modal-content', [
+                $el('p', { $: (p) => (this.textElement = p) }),
+                ...this.createButtons()
+            ])
         ]);
     }
     createButtons() {
         return [
-            $el("button", {
-                type: "button",
-                textContent: "Close",
-                onclick: () => this.close(),
-            }),
+            $el('button', {
+                type: 'button',
+                textContent: 'Close',
+                onclick: () => this.close()
+            })
         ];
     }
     close() {
-        this.element.style.display = "none";
+        this.element.style.display = 'none';
     }
     show(html) {
-        if (typeof html === "string") {
+        if (typeof html === 'string') {
             this.textElement.innerHTML = html;
         }
         else {
             this.textElement.replaceChildren(html);
         }
-        this.element.style.display = "flex";
+        this.element.style.display = 'flex';
     }
 }
 class ComfySettingsDialog extends ComfyDialog {
     constructor() {
         super();
-        this.element = $el("dialog", {
-            id: "comfy-settings-dialog",
-            parent: document.body,
+        this.settings = [];
+        this.element = $el('dialog', {
+            id: 'comfy-settings-dialog',
+            parent: document.body
         }, [
-            $el("table.comfy-modal-content.comfy-table", [
-                $el("caption", { textContent: "Settings" }),
-                $el("tbody", { $: (tbody) => (this.textElement = tbody) }),
-                $el("button", {
-                    type: "button",
-                    textContent: "Close",
+            $el('table.comfy-modal-content.comfy-table', [
+                $el('caption', { textContent: 'Settings' }),
+                $el('tbody', { $: (tbody) => (this.textElement = tbody) }),
+                $el('button', {
+                    type: 'button',
+                    textContent: 'Close',
                     style: {
-                        cursor: "pointer",
+                        cursor: 'pointer'
                     },
                     onclick: () => {
                         this.element.close();
-                    },
-                }),
-            ]),
+                    }
+                })
+            ])
         ]);
         this.settings = [];
     }
     getSettingValue(id, defaultValue) {
-        const settingId = "Comfy.Settings." + id;
+        const settingId = 'Comfy.Settings.' + id;
         const v = localStorage[settingId];
         return v == null ? defaultValue : JSON.parse(v);
     }
     setSettingValue(id, value) {
-        const settingId = "Comfy.Settings." + id;
+        const settingId = 'Comfy.Settings.' + id;
         localStorage[settingId] = JSON.stringify(value);
     }
-    addSetting({ id, name, type, defaultValue, onChange, attrs = {}, tooltip = "", options = undefined }) {
+    addSetting({ id, name, type, defaultValue, onChange = ((newValue, oldValue) => { }), attrs = {}, tooltip = '', options = undefined }) {
         if (!id) {
-            throw new Error("Settings must have an ID");
+            throw new Error('Settings must have an ID');
         }
         if (this.settings.find((s) => s.id === id)) {
             throw new Error(`Setting ${id} of type ${type} must have a unique ID.`);
@@ -237,26 +241,28 @@ class ComfySettingsDialog extends ComfyDialog {
                 };
                 value = this.getSettingValue(id, defaultValue);
                 let element;
-                const htmlID = id.replaceAll(".", "-");
-                const labelCell = $el("td", [
-                    $el("label", {
+                const htmlID = id.replaceAll('.', '-');
+                const list = new DOMTokenList();
+                list.add(tooltip !== '' ? 'comfy-tooltip-indicator' : '');
+                const labelCell = $el('td', [
+                    $el('label', {
                         for: htmlID,
-                        classList: [tooltip !== "" ? "comfy-tooltip-indicator" : ""],
-                        textContent: name,
+                        classList: list,
+                        textContent: name
                     })
                 ]);
-                if (typeof type === "function") {
+                if (typeof type === 'function') {
                     element = type(name, setter, value, attrs);
                 }
                 else {
                     switch (type) {
-                        case "boolean":
-                            element = $el("tr", [
+                        case 'boolean':
+                            element = $el('tr', [
                                 labelCell,
-                                $el("td", [
-                                    $el("input", {
+                                $el('td', [
+                                    $el('input', {
                                         id: htmlID,
-                                        type: "checkbox",
+                                        type: 'checkbox',
                                         checked: value,
                                         onchange: (event) => {
                                             const isChecked = event.target.checked;
@@ -264,79 +270,81 @@ class ComfySettingsDialog extends ComfyDialog {
                                                 onChange(isChecked);
                                             }
                                             this.setSettingValue(id, isChecked);
-                                        },
-                                    }),
-                                ]),
+                                        }
+                                    })
+                                ])
                             ]);
                             break;
-                        case "number":
-                            element = $el("tr", [
+                        case 'number':
+                            element = $el('tr', [
                                 labelCell,
-                                $el("td", [
-                                    $el("input", Object.assign({ type,
+                                $el('td', [
+                                    $el('input', Object.assign({ type,
                                         value, id: htmlID, oninput: (e) => {
                                             setter(e.target.value);
-                                        } }, attrs)),
-                                ]),
+                                        } }, attrs))
+                                ])
                             ]);
                             break;
-                        case "slider":
-                            element = $el("tr", [
+                        case 'slider':
+                            element = $el('tr', [
                                 labelCell,
-                                $el("td", [
-                                    $el("div", {
+                                $el('td', [
+                                    $el('div', {
                                         style: {
-                                            display: "grid",
-                                            gridAutoFlow: "column",
-                                        },
+                                            display: 'grid',
+                                            gridAutoFlow: 'column'
+                                        }
                                     }, [
-                                        $el("input", Object.assign(Object.assign({}, attrs), { value, type: "range", oninput: (e) => {
+                                        $el('input', Object.assign(Object.assign({}, attrs), { value, type: 'range', oninput: (e) => {
                                                 setter(e.target.value);
                                                 e.target.nextElementSibling.value = e.target.value;
                                             } })),
-                                        $el("input", Object.assign(Object.assign({}, attrs), { value, id: htmlID, type: "number", style: { maxWidth: "4rem" }, oninput: (e) => {
+                                        $el('input', Object.assign(Object.assign({}, attrs), { value, id: htmlID, type: 'number', style: { maxWidth: '4rem' }, oninput: (e) => {
                                                 setter(e.target.value);
-                                                e.target.previousElementSibling.value = e.target.value;
-                                            } })),
-                                    ]),
-                                ]),
+                                                e.target.nextElementSibling.value = e.target.value;
+                                            } }))
+                                    ])
+                                ])
                             ]);
                             break;
-                        case "combo":
-                            element = $el("tr", [
+                        case 'combo':
+                            element = $el('tr', [
                                 labelCell,
-                                $el("td", [
-                                    $el("select", {
+                                $el('td', [
+                                    $el('select', {
                                         oninput: (e) => {
                                             setter(e.target.value);
-                                        },
-                                    }, (typeof options === "function" ? options(value) : options || []).map((opt) => {
+                                        }
+                                    }, (typeof options === 'function'
+                                        ? options(value)
+                                        : options || []).map((opt) => {
                                         var _a;
-                                        if (typeof opt === "string") {
+                                        if (typeof opt === 'string') {
                                             opt = { text: opt };
                                         }
                                         const v = (_a = opt.value) !== null && _a !== void 0 ? _a : opt.text;
-                                        return $el("option", {
+                                        return $el('option', {
                                             value: v,
                                             textContent: opt.text,
-                                            selected: value + "" === v + "",
+                                            selected: value + '' === v + ''
                                         });
-                                    })),
-                                ]),
+                                    }))
+                                ])
                             ]);
                             break;
-                        case "text":
+                        case 'text':
                         default:
-                            if (type !== "text") {
+                            if (type !== 'text') {
                                 console.warn(`Unsupported setting type '${type}, defaulting to text`);
                             }
-                            element = $el("tr", [
+                            element = $el('tr', [
                                 labelCell,
-                                $el("td", [
-                                    $el("input", Object.assign({ value, id: htmlID, oninput: (e) => {
+                                $el('td', [
+                                    $el('input', Object.assign({ value, id: htmlID, oninput: (e) => {
                                             setter(e.target.value);
-                                        } }, attrs)),
-                                ]),
+                                        } }, attrs))
+                                ])
                             ]);
                             break;
                     }
@@ -345,7 +353,7 @@ class ComfySettingsDialog extends ComfyDialog {
                     element.title = tooltip;
                 }
                 return element;
-            },
+            }
         });
         const self = this;
         return {
@@ -354,168 +362,185 @@ class ComfySettingsDialog extends ComfyDialog {
             },
             set value(v) {
                 self.setSettingValue(id, v);
-            },
+            }
         };
     }
     show() {
-        this.textElement.replaceChildren($el("tr", {
-            style: { display: "none" },
-        }, [
-            $el("th"),
-            $el("th", { style: { width: "33%" } })
-        ]), ...this.settings.map((s) => s.render()));
+        this.textElement.replaceChildren($el('tr', {
+            style: { display: 'none' }
+        }, [$el('th'), $el('th', { style: { width: '33%' } })]), ...this.settings.map((s) => s.render()));
         this.element.showModal();
     }
 }
 export class ComfyUI {
     constructor(app) {
         this.menuContainer = null;
+        this.app = null;
+        this.dialog = null;
+        this.settings = null;
+        this.queue = null;
+        this.history = null;
+        this.queueSize = null;
+        this.lastQueueSize = 0;
+        this.batchCount = 0;
         this.app = app;
         this.dialog = new ComfyDialog();
         this.settings = new ComfySettingsDialog();
-        this.queue = new ComfyList("Queue");
-        this.history = new ComfyList("History");
-        api.addEventListener("status", () => {
+        this.queue = new ComfyList('Queue', app);
+        this.history = new ComfyList('History', app);
+        api.addEventListener('status', () => {
             this.queue.update();
             this.history.update();
         });
-        this.menuContainer = $el("div.comfy-menu", { parent: document.body }, [
-            $el("div.drag-handle", {
+        this.menuContainer = $el('div.comfy-menu', { parent: document.body }, [
+            $el('div.drag-handle', {
                 style: {
-                    position: "relative",
-                    width: "100%",
-                    cursor: "default"
+                    position: 'relative',
+                    width: '100%',
+                    cursor: 'default'
                 }
             }, [
-                $el("span.drag-handle"),
-                $el("span", { $: (q) => (this.queueSize = q) }),
-                $el("button.comfy-settings-btn", { textContent: "⚙️", onclick: () => this.settings.show() }),
+                $el('span.drag-handle'),
+                $el('span', { $: (q) => (this.queueSize = q) }),
+                $el('button.comfy-settings-btn', {
+                    textContent: '⚙️',
+                    onclick: () => this.settings.show()
+                })
             ]),
-            $el("button.comfy-queue-btn", {
-                id: "queue-button",
-                textContent: "Queue Runner",
-                onclick: () => app.queueRunner(0, this.batchCount),
+            $el('button.comfy-queue-btn', {
+                id: 'queue-button',
+                textContent: 'Queue Runner',
+                onclick: () => app.queueRunner(0, this.batchCount)
             }),
-            $el("div", {}, [
-                $el("label", { innerHTML: "Extra options" }, [
-                    $el("input", {
-                        type: "checkbox",
+            $el('div', {}, [
+                $el('label', { innerHTML: 'Extra options' }, [
+                    $el('input', {
+                        type: 'checkbox',
                         onchange: (i) => {
-                            document.getElementById("extraOptions").style.display = i.srcElement.checked ? "block" : "none";
-                            this.batchCount = i.srcElement.checked ? document.getElementById("batchCountInputRange").value : 1;
-                            document.getElementById("autoQueueCheckbox").checked = false;
-                        },
-                    }),
-                ]),
+                            document.getElementById('extraOptions').style.display = i.target
+                                .checked
+                                ? 'block'
+                                : 'none';
+                            this.batchCount = i.target.checked
+                                ? Number(document.getElementById('batchCountInputRange').value)
+                                : 1;
+                            const element = document.getElementById('autoQueueCheckbox');
+                            element.checked = false;
+                        }
+                    })
+                ])
             ]),
-            $el("div", { id: "extraOptions", style: { width: "100%", display: "none" } }, [
-                $el("label", { innerHTML: "Batch count" }, [
-                    $el("input", {
-                        id: "batchCountInputNumber",
-                        type: "number",
+            $el('div', { id: 'extraOptions', style: { width: '100%', display: 'none' } }, [
+                $el('label', { innerHTML: 'Batch count' }, [
+                    $el('input', {
+                        id: 'batchCountInputNumber',
+                        type: 'number',
                         value: this.batchCount,
-                        min: "1",
-                        style: { width: "35%", "margin-left": "0.4em" },
+                        min: '1',
+                        style: { width: '35%', 'margin-left': '0.4em' },
+                        oninput: (i) => {
+                            this.batchCount = i.target.value(document.getElementById('batchCountInputRange')).value = this.batchCount;
+                        }
+                    }),
+                    $el('input', {
+                        id: 'batchCountInputRange',
+                        type: 'range',
+                        min: '1',
+                        max: '100',
+                        value: this.batchCount,
                         oninput: (i) => {
                             this.batchCount = i.target.value;
-                            document.getElementById("batchCountInputRange").value = this.batchCount;
-                        },
+                            const element = document.getElementById('batchCountInputNumber');
+                            element.value = i.target.value;
+                        }
                     }),
-                    $el("input", {
-                        id: "batchCountInputRange",
-                        type: "range",
-                        min: "1",
-                        max: "100",
-                        value: this.batchCount,
-                        oninput: (i) => {
-                            this.batchCount = i.srcElement.value;
-                            document.getElementById("batchCountInputNumber").value = i.srcElement.value;
-                        },
-                    }),
-                    $el("input", {
-                        id: "autoQueueCheckbox",
-                        type: "checkbox",
+                    $el('input', {
+                        id: 'autoQueueCheckbox',
+                        type: 'checkbox',
                         checked: false,
-                        title: "automatically queue runner when the queue size hits 0",
-                    }),
-                ]),
-            ]),
+                        title: 'automatically queue runner when the queue size hits 0'
+                    })
+                ])
+            ])
         ]);
         this.settings.addSetting({
-            id: "Comfy.MenuPosition",
-            name: "Save menu position",
-            type: "boolean",
-            defaultValue: true,
+            id: 'Comfy.MenuPosition',
+            name: 'Save menu position',
+            type: 'boolean',
+            defaultValue: true
         });
         dragElement(this.menuContainer, this.settings);
-        this.setStatus({ exec_info: { queue_remaining: "X" } });
+        this.setStatus({ exec_info: { queue_remaining: 'X' } });
     }
     setStatus(status) {
-        this.queueSize.textContent = "Queue size: " + (status ? status.exec_info.queue_remaining : "ERR");
+        this.queueSize.textContent =
+            'Queue size: ' + (status ? status.exec_info.queue_remaining : 'ERR');
         if (status) {
             if (this.lastQueueSize != 0 &&
                 status.exec_info.queue_remaining == 0 &&
-                document.getElementById("autoQueueCheckbox").checked) {
-                app.queueRunner(0, this.batchCount);
+                document.getElementById('autoQueueCheckbox')
+                    .checked) {
+                this.app.queueRunner(0, this.batchCount);
             }
             this.lastQueueSize = status.exec_info.queue_remaining;
         }
     }
 }
 class ComfyList {
-    constructor(text, type) {
+    constructor(text, app, type) {
         _ComfyList_type.set(this, void 0);
         _ComfyList_text.set(this, void 0);
         __classPrivateFieldSet(this, _ComfyList_text, text, "f");
         __classPrivateFieldSet(this, _ComfyList_type, type || text.toLowerCase(), "f");
-        this.element = $el("div.comfy-list");
-        this.element.style.display = "none";
+        this.element = $el('div.comfy-list');
+        this.element.style.display = 'none';
+        this.app = app;
     }
     get visible() {
-        return this.element.style.display !== "none";
+        return this.element.style.display !== 'none';
     }
     load() {
         return __awaiter(this, void 0, void 0, function* () {
             const items = yield api.getItems(__classPrivateFieldGet(this, _ComfyList_type, "f"));
             this.element.replaceChildren(...Object.keys(items).flatMap((section) => [
-                $el("h4", {
-                    textContent: section,
+                $el('h4', {
+                    textContent: section
                 }),
-                $el("div.comfy-list-items", [
+                $el('div.comfy-list-items', [
                     ...items[section].map((item) => {
                         const removeAction = item.remove || {
-                            name: "Delete",
-                            cb: () => api.deleteItem(__classPrivateFieldGet(this, _ComfyList_type, "f"), item.prompt[1]),
+                            name: 'Delete',
+                            cb: () => api.deleteItem(__classPrivateFieldGet(this, _ComfyList_type, "f"), item.prompt[1])
                         };
-                        return $el("div", { textContent: item.prompt[0] + ": " }, [
-                            $el("button", {
-                                textContent: "Load",
+                        return $el('div', { textContent: item.prompt[0] + ': ' }, [
+                            $el('button', {
+                                textContent: 'Load',
                                 onclick: () => {
-                                    app.loadGraphData(item.prompt[3].extra_pnginfo.workflow);
+                                    this.app.loadGraphData(item.prompt[3].extra_pnginfo.workflow);
                                     if (item.outputs) {
-                                        app.nodeOutputs = item.outputs;
+                                        this.app.nodeOutputs = item.outputs;
                                     }
-                                },
+                                }
                             }),
-                            $el("button", {
+                            $el('button', {
                                 textContent: removeAction.name,
                                 onclick: () => __awaiter(this, void 0, void 0, function* () {
                                     yield removeAction.cb();
                                     yield this.update();
-                                }),
-                            }),
+                                })
+                            })
                         ]);
-                    }),
-                ]),
-            ]), $el("div.comfy-list-actions", [
-                $el("button", {
-                    textContent: "Clear " + __classPrivateFieldGet(this, _ComfyList_text, "f"),
+                    })
+                ])
+            ]), $el('div.comfy-list-actions', [
+                $el('button', {
+                    textContent: 'Clear ' + __classPrivateFieldGet(this, _ComfyList_text, "f"),
                     onclick: () => __awaiter(this, void 0, void 0, function* () {
                         yield api.clearItems(__classPrivateFieldGet(this, _ComfyList_type, "f"));
                         yield this.load();
-                    }),
+                    })
                 }),
-                $el("button", { textContent: "Refresh", onclick: () => this.load() }),
+                $el('button', { textContent: 'Refresh', onclick: () => this.load() })
             ]));
         });
     }
@@ -528,14 +553,14 @@ class ComfyList {
     }
     show() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.element.style.display = "block";
-            this.button.textContent = "Close";
+            this.element.style.display = 'block';
+            this.button.textContent = 'Close';
             yield this.load();
         });
     }
     hide() {
-        this.element.style.display = "none";
-        this.button.textContent = "View " + __classPrivateFieldGet(this, _ComfyList_text, "f");
+        this.element.style.display = 'none';
+        this.button.textContent = 'View ' + __classPrivateFieldGet(this, _ComfyList_text, "f");
     }
     toggle() {
         if (this.visible) {

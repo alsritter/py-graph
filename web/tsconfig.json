@@ -8,8 +8,8 @@
     "skipLibCheck": true,            // 跳过对声明文件的检查
     "forceConsistentCasingInFileNames": true,  // 强制一致的文件名大小写
     "removeComments": true,          // 删除编译后的输出中的注释
-    "declaration": true,             // 生成声明文件
-    "declarationDir": "./types",     // 声明文件输出目录
+    // "declaration": true,             // 生成声明文件
+    // "declarationDir": "./types",     // 声明文件输出目录
     "typeRoots": ["./types"],        // 声明文件的根目录
     "lib": ["dom", "es5", "es2015.promise", "es2015", "es2017", "es2022", "DOM.Iterable" ],
     "allowJs": true,                 // 允许编译 JavaScript 文件
@@ -18,8 +18,7 @@
   },
   "include": [
     "./scripts/**/*.ts",            // 包括的 TypeScript 文件
-    "./scripts/**/*.d.ts",          // 包括的声明文件
-    "./scripts/**/*.tsx"            // 包括的 JSX 文件（如果需要的话）
+    "./types/**/*.d.ts",          // 包括的声明文件
   ],
   "exclude": [
     "node_modules"                  // 排除的文件或目录

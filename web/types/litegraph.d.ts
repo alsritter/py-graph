@@ -37,9 +37,15 @@ export interface INodeSlot {
 
 export interface INodeInputSlot extends INodeSlot {
   link: LLink['id'] | null
+  name?: string
+  type?: string
+  widget?: IWidget
 }
 export interface INodeOutputSlot extends INodeSlot {
   links: LLink['id'][] | null
+  name?: string
+  type?: string
+  widget?: IWidget
 }
 
 export type WidgetCallback<T extends IWidget = IWidget> = (
@@ -61,6 +67,8 @@ export interface IWidget<TValue = any, TOptions = any> {
   last_y?: number
   clicked?: boolean
   marker?: boolean
+  config?: any
+
   callback?: WidgetCallback<this>
   /** Called by `LGraphCanvas.drawNodeWidgets` */
   draw?(
@@ -77,6 +85,8 @@ export interface IWidget<TValue = any, TOptions = any> {
   mouse?(event: MouseEvent, pos: Vector2, node: LGraphNode): boolean
   /** Called by `LGraphNode.computeSize` */
   computeSize?(width?: number): [number, number]
+
+  onRemove?(): void
 }
 export interface IButtonWidget extends IWidget<null, {}> {
   type: 'button'
@@ -295,7 +305,7 @@ export const LiteGraph: {
    * @param {String} name a name to distinguish from other nodes
    * @param {Object} options to set options
    */
-  createNode: (type: any, title: any, options: any) => any
+  createNode: (type: any, title?: any, options?: any) => any
   /**
    * Returns a registered node type with a given name
    * @method getNodeType
@@ -978,6 +988,11 @@ export declare class LGraphNode {
    * Called by `LGraph.add`
    */
   onAdded?(graph: LGraph): void
+
+  onResize?(size: Vector2): void
+
+  onInputDblClick?(slot: number, pos: Vector2): void
+
   /**
    * when removed from graph
    * Called by `LGraph.remove` `LGraph.clear`
@@ -1050,6 +1065,8 @@ export declare class LGraphNode {
   /** Called by `LGraphCanvas.processContextMenu` */
   getMenuOptions?(graphCanvas: LGraphCanvas): ContextMenuItem[]
   getSlotMenuOptions?(slot: INodeSlot): ContextMenuItem[]
+
+  getExtraMenuOptions?(graphCanvas: LGraphCanvas, options: any[]): ContextMenuItem[]
 }
 
 export type LGraphNodeConstructor<T extends LGraphNode = LGraphNode> = {
@@ -1158,6 +1175,10 @@ export declare class LGraphCanvas {
   )
 
   static active_canvas: HTMLCanvasElement
+
+  
+  //mouse in graph coordinates, where 0,0 is the top-left corner of the blue rectangle
+  graph_mouse: Vector2
 
   allow_dragcanvas: boolean
   allow_dragnodes: boolean

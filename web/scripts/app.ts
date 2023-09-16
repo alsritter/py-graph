@@ -929,7 +929,7 @@ export class ComfyApp {
 
   /**
    * 将当前图形工作流转换为适合发送至 API 的格式。
-   * @returns {Object} 包含序列化后的工作流和节点连接的对象。
+   * @returns 包含序列化后的工作流和节点连接的对象。
    */
   async graphToRunner() {
     // 序列化图形工作流
@@ -937,7 +937,10 @@ export class ComfyApp {
     const output = {}
 
     // 按执行顺序处理节点
-    for (const node of this.graph.computeExecutionOrder(false, 0)) {
+    for (const node of this.graph.computeExecutionOrder(
+      false,
+      0
+    ) as CustomGraphNode[]) {
       const n = workflow.nodes.find((n) => n.id === node.id)
 
       if (node.isVirtualNode) {
@@ -970,15 +973,17 @@ export class ComfyApp {
 
       // 存储所有节点连接
       for (let i in node.inputs) {
-        let parent = node.getInputNode(i)
+        let parent = node.getInputNode(Number(i)) as CustomGraphNode
         if (parent) {
-          let link = node.getInputLink(i)
+          let link = node.getInputLink(Number(i))
           while (parent.mode === 4 || parent.isVirtualNode) {
             let found = false
             if (parent.isVirtualNode) {
               link = parent.getInputLink(link.origin_slot)
               if (link) {
-                parent = parent.getInputNode(link.target_slot)
+                parent = parent.getInputNode(
+                  link.target_slot
+                ) as CustomGraphNode
                 if (parent) {
                   found = true
                 }
@@ -986,15 +991,19 @@ export class ComfyApp {
             } else if (link && parent.mode === 4) {
               let all_inputs = [link.origin_slot]
               if (parent.inputs) {
-                all_inputs = all_inputs.concat(Object.keys(parent.inputs))
-                for (let parent_input in all_inputs) {
+                all_inputs = all_inputs.concat(
+                  Object.keys(parent.inputs).map((key) => Number(key))
+                )
+                for (let parent_input of all_inputs) {
                   parent_input = all_inputs[parent_input]
                   if (
                     parent.inputs[parent_input].type === node.inputs[i].type
                   ) {
                     link = parent.getInputLink(parent_input)
                     if (link) {
-                      parent = parent.getInputNode(parent_input)
+                      parent = parent.getInputNode(
+                        parent_input
+                      ) as CustomGraphNode
                     }
                     found = true
                     break
@@ -1011,7 +1020,7 @@ export class ComfyApp {
           if (link) {
             inputs[node.inputs[i].name] = [
               String(link.origin_id),
-              parseInt(link.origin_slot)
+              link.origin_slot
             ]
           }
         }
