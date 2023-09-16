@@ -19,11 +19,7 @@ class ComfyApi extends EventTarget {
     return fetch(this.apiURL(route), options)
   }
 
-  addEventListener(
-    type: string,
-    callback: EventListenerOrEventListenerObject,
-    options = {}
-  ) {
+  addEventListener(type: string, callback, options = {}) {
     super.addEventListener(type, callback, options)
     this.#registered.add(type)
   }
@@ -327,6 +323,15 @@ class ComfyApi extends EventTarget {
    */
   async interrupt() {
     await this.#postItem('interrupt', null)
+  }
+
+  /**
+   * Gets system & device stats
+   * @returns System stats such as python version, OS, per device info
+   */
+  async getSystemStats() {
+    const res = await this.fetchApi('/system_stats')
+    return await res.json()
   }
 }
 

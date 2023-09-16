@@ -80,7 +80,7 @@ export interface IWidget<TValue = any, TOptions = any> {
         node: LGraphNode
     ): boolean;
     /** Called by `LGraphNode.computeSize` */
-    computeSize?(width: number): [number, number];
+    computeSize?(width?: number): [number, number];
 }
 export interface IButtonWidget extends IWidget<null, {}> {
     type: "button";
@@ -387,9 +387,9 @@ export declare class LGraph {
     starttime: number;
     status: typeof LGraph.STATUS_RUNNING | typeof LGraph.STATUS_STOPPED;
 
-    private _nodes: LGraphNode[];
-    private _groups: LGraphGroup[];
-    private _nodes_by_id: Record<number, LGraphNode>;
+    _nodes: LGraphNode[];
+    _groups: LGraphGroup[];
+    _nodes_by_id: Record<number, LGraphNode>;
     /** nodes that are executable sorted in execution order */
     private _nodes_executable:
         | (LGraphNode & { onExecute: NonNullable<LGraphNode["onExecute"]> }[])
@@ -559,7 +559,7 @@ export declare class LGraph {
     clearTriggeredSlots(): void;
     /* Called when something visually changed (not the graph!) */
     change(): void;
-    setDirtyCanvas(fg: boolean, bg: boolean): void;
+    setDirtyCanvas(fg: boolean, bg?: boolean): void;
     /** Destroys a link */
     removeLink(link_id: number): void;
     /** Creates a Object containing all the info about this graph, it can be serialized */
@@ -623,6 +623,7 @@ export declare class LGraphNode {
     pos: Vector2;
     is_selected: boolean;
     mouseOver: boolean;
+    widgets: IWidget[];
 
     id: number;
 

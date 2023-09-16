@@ -1,6 +1,6 @@
 import { api } from './api.js'
-import type { ComfyApp } from '../types/app'
-import type { Position, CustomElement } from '../types/ui'
+import type { ComfyApp } from './app'
+import type { Position, CustomElement } from './types'
 
 /**
  * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。
@@ -273,7 +273,7 @@ export class ComfyDialog {
    * 显示对话框，可以通过传递 HTML 内容或 HTMLElement 来自定义显示内容。
    * @param html - 要显示的 HTML 内容或 HTMLElement。
    */
-  show(html: string | HTMLElement) {
+  show(html: string | CustomElement) {
     if (typeof html === 'string') {
       // 如果传递的是字符串，将其设置为对话框的文本内容
       this.textElement.innerHTML = html
@@ -596,7 +596,7 @@ export class ComfyUI {
   history: ComfyList = null
   queueSize: CustomElement = null
   lastQueueSize: number | string = 0
-  batchCount: number | string = 0
+  batchCount: number = 0
 
   /**
    * Represents the UI of the application.
@@ -651,11 +651,13 @@ export class ComfyUI {
                 ? 'block'
                 : 'none'
               this.batchCount = i.target.checked
-                ? (
-                    document.getElementById(
-                      'batchCountInputRange'
-                    ) as HTMLInputElement
-                  ).value
+                ? Number(
+                    (
+                      document.getElementById(
+                        'batchCountInputRange'
+                      ) as HTMLInputElement
+                    ).value
+                  )
                 : 1
 
               const element = document.getElementById(
@@ -777,38 +779,43 @@ class ComfyList {
   async load() {
     const items = await api.getItems(this.#type)
     this.element.replaceChildren(
-      ...Object.keys(items).flatMap((section) => [
-        $el('h4', {
-          textContent: section
-        }),
-        $el('div.comfy-list-items', [
-          ...items[section].map((item) => {
-            // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
-            const removeAction = item.remove || {
-              name: 'Delete',
-              cb: () => api.deleteItem(this.#type, item.prompt[1])
-            }
-            return $el('div', { textContent: item.prompt[0] + ': ' }, [
-              $el('button', {
-                textContent: 'Load',
-                onclick: () => {
-                  this.app.loadGraphData(item.prompt[3].extra_pnginfo.workflow)
-                  if (item.outputs) {
-                    this.app.nodeOutputs = item.outputs
-                  }
+      ...Object.keys(items).flatMap(
+        (section) =>
+          [
+            $el('h4', {
+              textContent: section
+            }),
+            $el('div.comfy-list-items', [
+              ...items[section].map((item) => {
+                // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
+                const removeAction = item.remove || {
+                  name: 'Delete',
+                  cb: () => api.deleteItem(this.#type, item.prompt[1])
                 }
-              }),
-              $el('button', {
-                textContent: removeAction.name,
-                onclick: async () => {
-                  await removeAction.cb()
-                  await this.update()
-                }
+                return $el('div', { textContent: item.prompt[0] + ': ' }, [
+                  $el('button', {
+                    textContent: 'Load',
+                    onclick: () => {
+                      this.app.loadGraphData(
+                        item.prompt[3].extra_pnginfo.workflow
+                      )
+                      if (item.outputs) {
+                        this.app.nodeOutputs = item.outputs
+                      }
+                    }
+                  }),
+                  $el('button', {
+                    textContent: removeAction.name,
+                    onclick: async () => {
+                      await removeAction.cb()
+                      await this.update()
+                    }
+                  })
+                ])
               })
             ])
-          })
-        ])
-      ] as Node[]),
+          ] as Node[]
+      ),
       $el('div.comfy-list-actions', [
         $el('button', {
           textContent: 'Clear ' + this.#text,
