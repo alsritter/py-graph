@@ -1,7 +1,11 @@
 import { IWidget, LGraphNode, LiteGraph, widgetTypes } from '../types/litegraph'
 import type { ComfyApp } from './app'
 import { api } from './api'
-import { CustomGraphNode, CustomWidget, customWidgetTypes } from './types'
+import {
+  CustomGraphNode,
+  CustomWidget,
+  customWidgetTypes
+} from '../types/comfy.js'
 
 function getNumberDefaults(inputData, defaultStep) {
   let defaultVal = inputData[1]['default']
@@ -358,7 +362,7 @@ export const ComfyWidgets = {
 
     return res
   },
-  COMBO(node, inputName, inputData) {
+  COMBO(node, inputName, inputData, app: ComfyApp) {
     const type = inputData[0]
     let defaultValue = type[0]
     if (inputData[1] && inputData[1].default) {
@@ -521,3 +525,5 @@ export const ComfyWidgets = {
     return { widget: uploadWidget }
   }
 }
+
+export type ComfyWidgetsType = (typeof ComfyWidgets)

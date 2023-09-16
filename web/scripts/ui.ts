@@ -1,6 +1,6 @@
 import { api } from './api.js'
 import type { ComfyApp } from './app'
-import type { Position, CustomElement } from './types'
+import type { Position, CustomElement } from '../types/comfy.js'
 
 /**
  * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。
@@ -222,7 +222,7 @@ function dragElement(dragEl: CustomElement, settings: ComfySettingsDialog) {
     name: 'Save menu position',
     type: 'boolean',
     defaultValue: savePos,
-    onChange(value) {
+    onChange(value, oldVal) {
       if (savePos === undefined && value) {
         restorePos()
       }
@@ -363,7 +363,7 @@ class ComfySettingsDialog extends ComfyDialog {
     name,
     type,
     defaultValue,
-    onChange = undefined,
+    onChange = ((newValue, oldValue?) => {}),
     attrs = {},
     tooltip = '',
     options = undefined

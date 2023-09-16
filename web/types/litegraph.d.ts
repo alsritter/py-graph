@@ -222,12 +222,12 @@ export const LiteGraph: {
   search_filter_enabled: boolean
   search_show_all_on_open: boolean
   auto_load_slot_types: boolean
-  registered_slot_in_types: {}
-  registered_slot_out_types: {}
+  registered_slot_in_types: Record<string, any>
+  registered_slot_out_types: Record<string, any>
   slot_types_in: any[]
   slot_types_out: any[]
-  slot_types_default_in: any[]
-  slot_types_default_out: any[]
+  slot_types_default_in: Record<string, any>
+  slot_types_default_out: Record<string, any>
   alt_drag_do_clone_nodes: boolean
   do_add_triggers_slots: boolean
   allow_multi_output_for_events: boolean
@@ -237,7 +237,6 @@ export const LiteGraph: {
   ctrl_shift_v_paste_connect_unselected_outputs: boolean
   use_uuids: boolean
 
-  
   /** 检查是否是内部的区域 */
   isInsideRectangle(x, y, left, top, width, height)
 
@@ -636,6 +635,8 @@ export declare class LGraphNode {
   widgets: IWidget[]
 
   id: number
+
+  _shape: number
 
   //inputs available: array of inputs
   inputs: INodeInputSlot[]

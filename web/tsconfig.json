@@ -14,7 +14,7 @@
     "lib": ["dom", "es5", "es2015.promise", "es2015", "es2017", "es2022", "DOM.Iterable" ],
     "allowJs": true,                 // 允许编译 JavaScript 文件
     "checkJs": true,                 // 启用对 JavaScript 文件的类型检查
-    "isolatedModules": true          // 确保每个文件都是独立的模块
+    "isolatedModules": true,          // 确保每个文件都是独立的模块
   },
   "include": [
     "./scripts/**/*.ts",            // 包括的 TypeScript 文件

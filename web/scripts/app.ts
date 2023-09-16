@@ -1,16 +1,15 @@
 import { api } from './api.js'
 import { ComfyWidgets } from './widgets.js'
+import { ComfyNode } from './node.js'
 import { ComfyUI, $el } from './ui.js'
-import type { ComfyExtension } from '../types/comfy.js'
-import { CustomGraphNode, CustomWidget, customWidgetTypes } from './types'
+import type {
+  ComfyExtension,
+  CustomGraphNode,
+  CustomWidget,
+  NodeError
+} from '../types/comfy.js'
 import { defaultGraph } from './defaultGraph.js'
-import {
-  IWidget,
-  LGraph,
-  LGraphCanvas,
-  LGraphNode,
-  LiteGraph
-} from '../types/litegraph.js'
+import { IWidget, LGraph, LGraphCanvas, LiteGraph } from '../types/litegraph.js'
 import { ComfyLogging } from './logging.js'
 
 export class ComfyApp {
@@ -180,79 +179,15 @@ export class ComfyApp {
     // Register a node for each definition
     for (const nodeId in defs) {
       const nodeData = defs[nodeId]
-      const node = Object.assign(
-        function ComfyNode() {
-          var inputs = nodeData['input']['required']
-          if (nodeData['input']['optional'] != undefined) {
-            inputs = Object.assign(
-              {},
-              nodeData['input']['required'],
-              nodeData['input']['optional']
-            )
-          }
-          const config = { minWidth: 1, minHeight: 1 }
-          for (const inputName in inputs) {
-            const inputData = inputs[inputName]
-            const type = inputData[0]
+      const node = Object.assign(new ComfyNode(nodeData, widgets, this), {
+        title: nodeData.display_name || nodeData.name,
+        comfyClass: nodeData.name,
+        category: nodeData.category
+      })
 
-            if (inputData[1]?.forceInput) {
-              this.addInput(inputName, type)
-            } else {
-              if (Array.isArray(type)) {
-                // Enums
-                Object.assign(
-                  config,
-                  widgets.COMBO(this, inputName, inputData, app) || {}
-                )
-              } else if (`${type}:${inputName}` in widgets) {
-                // Support custom widgets by Type:Name
-                Object.assign(
-                  config,
-                  widgets[`${type}:${inputName}`](
-                    this,
-                    inputName,
-                    inputData,
-                    app
-                  ) || {}
-                )
-              } else if (type in widgets) {
-                // Standard type widgets
-                Object.assign(
-                  config,
-                  widgets[type](this, inputName, inputData, app) || {}
-                )
-              } else {
-                // Node connection inputs
-                this.addInput(inputName, type)
-              }
-            }
-          }
+      node.comfyClass = nodeData.name
 
-          for (const o in nodeData['output']) {
-            const output = nodeData['output'][o]
-            const outputName = nodeData['output_name'][o] || output
-            const outputShape = nodeData['output_is_list'][o]
-              ? LiteGraph.GRID_SHAPE
-              : LiteGraph.CIRCLE_SHAPE
-            this.addOutput(outputName, output, { shape: outputShape })
-          }
-
-          const s = this.computeSize()
-          s[0] = Math.max(config.minWidth, s[0] * 1.5)
-          s[1] = Math.max(config.minHeight, s[1])
-          this.size = s
-          this.serialize_widgets = true
-        },
-        {
-          title: nodeData.display_name || nodeData.name,
-          comfyClass: nodeData.name,
-          category: nodeData.category
-        }
-      )
-
-      node.prototype.comfyClass = nodeData.name
-
-			this.#addDrawBackgroundHandler(node);
+      this.#addDrawBackgroundHandler(node)
 
       await this.#invokeExtensionsAsync('beforeRegisterNodeDef', node, nodeData)
       LiteGraph.registerNodeType(nodeId, node)
@@ -353,8 +288,8 @@ export class ComfyApp {
       for (const [nodeID, nodeError] of Object.entries(
         error.response.node_errors
       )) {
-        message += '\n' + nodeError.class_type + ':'
-        for (const errorReason of nodeError.errors) {
+        message += '\n' + (nodeError as NodeError).class_type + ':'
+        for (const errorReason of (nodeError as NodeError).errors) {
           message +=
             '\n    - ' + errorReason.message + ': ' + errorReason.details
         }
@@ -493,7 +428,12 @@ export class ComfyApp {
       'dragover',
       (e) => {
         this.canvas.adjustMouseEvent(e)
-        const node = this.graph.getNodeOnPos(e.canvasX, e.canvasY) as CustomGraphNode
+        const node = this.graph.getNodeOnPos(
+          // @ts-ignore
+          e.canvasX,
+          // @ts-ignore
+          e.canvasY
+        ) as CustomGraphNode
         if (node) {
           if (node.onDragOver && node.onDragOver(e)) {
             this.dragOverNode = node
@@ -799,7 +739,7 @@ export class ComfyApp {
     ) {
       const res = origDrawNodeShape.apply(this, arguments)
 
-      const nodeErrors = self.lastNodeErrors?.[node.id]
+      const nodeErrors = self.lastNodeErrors?.[node.id] as NodeError
 
       let color = null
       let lineWidth = 1
@@ -819,8 +759,7 @@ export class ComfyApp {
       }
 
       if (color) {
-        const shape =
-          node._shape || node.constructor.shape || LiteGraph.ROUND_SHAPE
+        const shape = node._shape || node.shape || LiteGraph.ROUND_SHAPE
         ctx.lineWidth = lineWidth
         ctx.globalAlpha = 0.8
         ctx.beginPath()
@@ -969,7 +908,7 @@ export class ComfyApp {
             const node = app.graph.getNodeById(n.id)
             if (node.widgets) {
               for (const w of node.widgets) {
-                const widget = w as IWidget & { afterQueued: () => void }
+                const widget = w as CustomWidget
                 // Allow widgets to run callbacks after a prompt has been queued
                 // e.g. random seed after every gen
                 if (widget.afterQueued) {
