@@ -120,7 +120,7 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
-    const nodeTypePrototype = Object.getPrototypeOf(nodeType)
+    const nodeTypePrototype = nodeType.prototype
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
@@ -255,12 +255,9 @@ app.registerExtension({
       return r
     }
 
-    Object.setPrototypeOf(nodeType, {
-      ...nodeTypePrototype,
-      onInputDblClick: newOnInputDblClick,
-      getExtraMenuOptions: newGetExtraMenuOptions,
-      onConfigure: newOnConfigure
-    })
+    nodeType.prototype.onConfigure = newOnConfigure
+    nodeType.prototype.onInputDblClick = newOnInputDblClick
+    nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions
   },
   registerCustomNodes() {
     class PrimitiveNode extends LGraphNode {

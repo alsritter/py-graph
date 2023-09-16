@@ -88,7 +88,7 @@ app.registerExtension({
     name: 'Comfy.WidgetInputs',
     beforeRegisterNodeDef(nodeType, nodeData, app) {
         return __awaiter(this, void 0, void 0, function* () {
-            const nodeTypePrototype = Object.getPrototypeOf(nodeType);
+            const nodeTypePrototype = nodeType.prototype;
             const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions;
             const newGetExtraMenuOptions = function (_, options) {
                 var _a, _b, _c, _d;
@@ -184,7 +184,9 @@ app.registerExtension({
                 }, 300);
                 return r;
             };
-            Object.setPrototypeOf(nodeType, Object.assign(Object.assign({}, nodeTypePrototype), { onInputDblClick: newOnInputDblClick, getExtraMenuOptions: newGetExtraMenuOptions, onConfigure: newOnConfigure }));
+            nodeType.prototype.onConfigure = newOnConfigure;
+            nodeType.prototype.onInputDblClick = newOnInputDblClick;
+            nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions;
         });
     },
     registerCustomNodes() {
