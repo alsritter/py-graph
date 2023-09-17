@@ -28,23 +28,26 @@ export class ComfyApp {
             this.workflowManager = new WorkflowManager(eventManager);
             this.progressManager = new ProgressManager();
             const modules = [
-                this.logger,
-                this.nodeManager,
                 this.extensionsManager,
                 this.canvasManager,
                 this.stateHandler,
+                this.nodeManager,
+                this.progressManager,
                 this.workflowManager,
-                this.progressManager
+                this.logger
             ];
-            modules.forEach((m) => m.setup({
-                logger: this.logger,
-                nodeManager: this.nodeManager,
-                extensionsManager: this.extensionsManager,
-                canvasManager: this.canvasManager,
-                stateHandler: this.stateHandler,
-                workflowManager: this.workflowManager,
-                progressManager: this.progressManager
-            }));
+            for (const module of modules) {
+                yield module.setup({
+                    logger: this.logger,
+                    nodeManager: this.nodeManager,
+                    extensionsManager: this.extensionsManager,
+                    canvasManager: this.canvasManager,
+                    stateHandler: this.stateHandler,
+                    workflowManager: this.workflowManager,
+                    progressManager: this.progressManager
+                });
+            }
+            yield eventManager.invokeExtensions('setup');
         });
     }
     registerExtension(extension) {
