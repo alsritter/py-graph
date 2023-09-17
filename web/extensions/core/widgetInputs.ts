@@ -1,4 +1,4 @@
-import { ComfyWidgets, addValueControlWidget } from '../../scripts/widgets.js'
+import { ComfyWidgets, addValueControlWidget } from '../../scripts/canvas-manager/widgets.js'
 import { app } from '../../scripts/app.js'
 
 const CONVERTED_TYPE = 'converted-widget'

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { api } from './api.js';
+import { api } from '../api.js';
 function getNumberDefaults(inputData, defaultStep) {
     let defaultVal = inputData[1]['default'];
     let { min, max, step } = inputData[1];

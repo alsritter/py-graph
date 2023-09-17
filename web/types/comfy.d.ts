@@ -1,9 +1,29 @@
 import { LGraphNode, IWidget, Vector2 } from './litegraph'
+import type { NodeManager } from '../scripts/node-manager/index'
+import type { Logger } from '../scripts/logger'
+import type { ExtensionsManager } from '../scripts/extension-manager/index'
+import type { StateHandler } from '../scripts/state-handler/index'
+import type { CanvasManager } from '../scripts/canvas-manager/index'
+import type { ProgressManager } from '../scripts/progress-manager/index'
 import { ComfyApp } from '../scripts/app'
 
 type Merge<M, N> = Omit<M, Extract<keyof M, keyof N>> & N
 
 declare global {
+  type ComfyCenter = {
+    logger: Logger
+    nodeManager: NodeManager
+    extensionsManager: ExtensionsManager
+    canvasManager: CanvasManager
+    stateHandler: StateHandler
+    workflowManager: WorkflowManager
+    progressManager: ProgressManager
+  }
+
+  interface Module {
+    setup(config: ComfyCenter)
+  }
+
   interface Position {
     x: number
     y: number
@@ -88,7 +108,7 @@ declare global {
      * @param app The ComfyUI app instance
      * @returns An array of {[widget name]: widget data}
      */
-    getIWidgets?(
+    getCustomWidgets?(
       app: ComfyApp
     ): Promise<
       Record<

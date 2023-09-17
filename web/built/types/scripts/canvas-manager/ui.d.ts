@@ -1,4 +1,3 @@
-import type { CanvasManager } from './canvas-manager/index.js';
 export declare function $el(tag: string, propsOrChildren?: CustomElement[] | CustomElement, children?: CustomElement[]): CustomElement;
 export declare class ComfyDialog {
     element: CustomElement;
@@ -29,7 +28,7 @@ declare class ComfySettingsDialog extends ComfyDialog {
 }
 export declare class ComfyUI {
     menuContainer: any;
-    app: CanvasManager;
+    app: ComfyCenter;
     dialog: ComfyDialog;
     settings: ComfySettingsDialog;
     queue: ComfyList;
@@ -37,15 +36,15 @@ export declare class ComfyUI {
     queueSize: CustomElement;
     lastQueueSize: number | string;
     batchCount: number;
-    constructor(app: CanvasManager);
+    constructor(app: ComfyCenter);
     setStatus(status: any): void;
 }
 declare class ComfyList {
     #private;
     element: CustomElement;
     button: HTMLButtonElement;
-    app: CanvasManager;
-    constructor(text: string, app: CanvasManager, type?: string);
+    app: ComfyCenter;
+    constructor(text: string, app: ComfyCenter, type?: string);
     get visible(): boolean;
     load(): Promise<void>;
     update(): Promise<void>;

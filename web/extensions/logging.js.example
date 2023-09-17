@@ -17,7 +17,7 @@ const ext = {
 		// defs is a lookup core nodes, add yours into this
 		console.log("[logging]", "add custom node definitions", "current nodes:", Object.keys(defs));
 	},
-	async getIWidgets(app) {
+	async getCustomWidgets(app) {
 		// Return custom widget types
 		// See ComfyWidgets for widget examples
 		console.log("[logging]", "provide custom widgets");

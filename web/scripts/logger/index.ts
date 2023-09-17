@@ -1,6 +1,6 @@
-import { $el, ComfyDialog } from './ui.js'
-import { api } from './api.js'
-import type { ComfyApp } from './app.js'
+import { $el, ComfyDialog } from '../canvas-manager/ui.js'
+import { api } from '../api.js'
+import { CanvasManager } from '../canvas-manager/index.js'
 
 $el('style', {
   textContent: `
@@ -25,6 +25,199 @@ $el('style', {
     `,
   parent: document.body
 })
+
+export class Logger implements Module {
+  private canvasManager: CanvasManager
+
+  constructor() {
+    this.dialog = new ComfyLoggingDialog(this)
+  }
+
+  setup(config) {
+    this.canvasManager = config.canvasManager
+    this.addSetting()
+    this.catchUnhandled()
+    this.addInitData()
+  }
+
+  /**
+   * @type Array<{ source: string, type: string, timestamp: Date, message: any }>
+   */
+  entries: Array<{
+    source: string
+    type: string
+    timestamp: Date
+    message: any
+  }> = []
+
+  #enabled: boolean
+  #console = {}
+
+  dialog: ComfyLoggingDialog
+
+  get enabled() {
+    return this.#enabled
+  }
+
+  set enabled(value) {
+    if (value === this.#enabled) return
+    if (value) {
+      this.patchConsole()
+    } else {
+      this.unpatchConsole()
+    }
+    this.#enabled = value
+  }
+
+  addSetting() {
+    const settingId = 'Comfy.Logging.Enabled'
+    const htmlSettingId = settingId.replaceAll('.', '-')
+    const setting = this.canvasManager.ui.settings.addSetting({
+      id: settingId,
+      name: settingId,
+      defaultValue: true,
+      type: (name: any, setter: (arg0: boolean) => void, value: any) => {
+        return $el('tr', [
+          $el('td', [
+            $el('label', {
+              textContent: 'Logging',
+              for: htmlSettingId
+            })
+          ]),
+          $el('td', [
+            $el('input', {
+              id: htmlSettingId,
+              type: 'checkbox',
+              checked: value,
+              onchange: (event) => {
+                setter((this.enabled = event.target.checked))
+              }
+            }),
+            $el('button', {
+              textContent: 'View Logs',
+              onclick: () => {
+                this.canvasManager.ui.settings.element.close()
+                this.dialog.show()
+              },
+              style: {
+                fontSize: '14px',
+                display: 'block',
+                marginTop: '5px'
+              }
+            })
+          ])
+        ])
+      }
+    })
+    this.enabled = setting.value
+  }
+
+  patchConsole() {
+    // Capture common console outputs
+    const self = this
+    for (const type of ['log', 'warn', 'error', 'debug']) {
+      const orig = console[type]
+      this.#console[type] = orig
+      console[type] = function () {
+        orig.apply(console, arguments)
+        self.addEntry('console', type, ...arguments)
+      }
+    }
+  }
+
+  unpatchConsole() {
+    // Restore original console functions
+    for (const type of Object.keys(this.#console)) {
+      console[type] = this.#console[type]
+    }
+    this.#console = {}
+  }
+
+  catchUnhandled() {
+    // Capture uncaught errors
+    window.addEventListener('error', (e) => {
+      this.addEntry('window', 'error', e.error ?? 'Unknown error')
+      return false
+    })
+
+    window.addEventListener('unhandledrejection', (e) => {
+      this.addEntry('unhandledrejection', 'error', e.reason ?? 'Unknown error')
+    })
+  }
+
+  clear() {
+    this.entries = []
+  }
+
+  addEntry(
+    source: string,
+    type: string,
+    ...args: { UserAgent?: string; MissingNodes?: any[] }[]
+  ) {
+    if (this.enabled) {
+      this.entries.push({
+        source,
+        type,
+        timestamp: new Date(),
+        message: args
+      })
+    }
+  }
+
+  log(source: string, ...args: any[]) {
+    this.addEntry(source, 'log', ...args)
+  }
+
+  async addInitData() {
+    if (!this.enabled) return
+    const source = 'ComfyUI.Logging'
+    this.addEntry(source, 'debug', { UserAgent: navigator.userAgent })
+    const systemStats = await api.getSystemStats()
+    this.addEntry(source, 'debug', systemStats)
+  }
+
+  formatRunnerError(error) {
+    if (error == null) {
+      return '(unknown error)'
+    } else if (typeof error === 'string') {
+      return error
+    } else if (error.stack && error.message) {
+      return error.toString()
+    } else if (error.response) {
+      let message = error.response.error.message
+      if (error.response.error.details)
+        message += ': ' + error.response.error.details
+      for (const [nodeID, nodeError] of Object.entries(
+        error.response.node_errors
+      )) {
+        message += '\n' + (nodeError as NodeError).class_type + ':'
+        for (const errorReason of (nodeError as NodeError).errors) {
+          message +=
+            '\n    - ' + errorReason.message + ': ' + errorReason.details
+        }
+      }
+      return message
+    }
+    return '(unknown error)'
+  }
+
+  formatExecutionError(error: {
+    traceback: any[]
+    node_id: any
+    node_type: any
+    exception_message: any
+  }) {
+    if (error == null) {
+      return '(unknown error)'
+    }
+
+    const traceback = error.traceback.join('')
+    const nodeId = error.node_id
+    const nodeType = error.node_type
+
+    return `Error occurred when executing ${nodeType}:\n\n${error.exception_message}\n\n${traceback}`
+  }
+}
 
 // Stringify function supporting max depth and removal of circular references
 // https://stackoverflow.com/a/57193345
@@ -96,9 +289,9 @@ const fileInput = $el('input', {
 })
 
 class ComfyLoggingDialog extends ComfyDialog {
-  logging: ComfyLogging
+  logging: Logger
 
-  constructor(logging: ComfyLogging) {
+  constructor(logging: Logger) {
     super()
     this.logging = logging
   }
@@ -249,144 +442,5 @@ class ComfyLoggingDialog extends ComfyDialog {
       )
     }
     super.show($el('div', els))
-  }
-}
-
-export class ComfyLogging {
-  /**
-   * @type Array<{ source: string, type: string, timestamp: Date, message: any }>
-   */
-  entries: Array<{ source: string; type: string; timestamp: Date; message: any }> = []
-
-  #enabled: boolean
-  #console = {}
-
-	app: ComfyApp
-	dialog: ComfyLoggingDialog
-
-  get enabled() {
-    return this.#enabled
-  }
-
-  set enabled(value) {
-    if (value === this.#enabled) return
-    if (value) {
-      this.patchConsole()
-    } else {
-      this.unpatchConsole()
-    }
-    this.#enabled = value
-  }
-
-  constructor(app: ComfyApp) {
-    this.app = app
-
-    this.dialog = new ComfyLoggingDialog(this)
-    this.addSetting()
-    this.catchUnhandled()
-    this.addInitData()
-  }
-
-  addSetting() {
-    const settingId = 'Comfy.Logging.Enabled'
-    const htmlSettingId = settingId.replaceAll('.', '-')
-    const setting = this.app.ui.settings.addSetting({
-      id: settingId,
-      name: settingId,
-      defaultValue: true,
-      type: (name: any, setter: (arg0: boolean) => void, value: any) => {
-        return $el('tr', [
-          $el('td', [
-            $el('label', {
-              textContent: 'Logging',
-              for: htmlSettingId
-            })
-          ]),
-          $el('td', [
-            $el('input', {
-              id: htmlSettingId,
-              type: 'checkbox',
-              checked: value,
-              onchange: (event) => {
-                setter((this.enabled = event.target.checked))
-              }
-            }),
-            $el('button', {
-              textContent: 'View Logs',
-              onclick: () => {
-                this.app.ui.settings.element.close()
-                this.dialog.show()
-              },
-              style: {
-                fontSize: '14px',
-                display: 'block',
-                marginTop: '5px'
-              }
-            })
-          ])
-        ])
-      }
-    })
-    this.enabled = setting.value
-  }
-
-  patchConsole() {
-    // Capture common console outputs
-    const self = this
-    for (const type of ['log', 'warn', 'error', 'debug']) {
-      const orig = console[type]
-      this.#console[type] = orig
-      console[type] = function () {
-        orig.apply(console, arguments)
-        self.addEntry('console', type, ...arguments)
-      }
-    }
-  }
-
-  unpatchConsole() {
-    // Restore original console functions
-    for (const type of Object.keys(this.#console)) {
-      console[type] = this.#console[type]
-    }
-    this.#console = {}
-  }
-
-  catchUnhandled() {
-    // Capture uncaught errors
-    window.addEventListener('error', (e) => {
-      this.addEntry('window', 'error', e.error ?? 'Unknown error')
-      return false
-    })
-
-    window.addEventListener('unhandledrejection', (e) => {
-      this.addEntry('unhandledrejection', 'error', e.reason ?? 'Unknown error')
-    })
-  }
-
-  clear() {
-    this.entries = []
-  }
-
-  addEntry(source: string, type: string, ...args: { UserAgent?: string; MissingNodes?: any[] }[]) {
-    if (this.enabled) {
-      this.entries.push({
-        source,
-        type,
-        timestamp: new Date(),
-        message: args
-      })
-    }
-  }
-
-  log(source, ...args) {
-    this.addEntry(source, 'log', ...args)
-  }
-
-  async addInitData() {
-    if (!this.enabled) return
-    const source = 'ComfyUI.Logging'
-    this.addEntry(source, 'debug', { UserAgent: navigator.userAgent })
-    const systemStats = await api.getSystemStats()
-    this.addEntry(source, 'debug', systemStats)
   }
 }

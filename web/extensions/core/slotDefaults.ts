@@ -1,6 +1,6 @@
 import { app } from '../../scripts/app.js'
 import type { ComfyApp } from '../../scripts/app.js'
-import { ComfyWidgets } from '../../scripts/widgets.js'
+import { ComfyWidgets } from '../../scripts/canvas-manager/widgets.js'
 // Adds defaults for quickly adding nodes with middle click on the input/output
 
 const extensionObj: ComfyExtension = {

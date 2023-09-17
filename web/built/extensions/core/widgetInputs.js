@@ -12,7 +12,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-import { ComfyWidgets, addValueControlWidget } from '../../scripts/widgets.js';
+import { ComfyWidgets, addValueControlWidget } from '../../scripts/canvas-manager/widgets.js';
 import { app } from '../../scripts/app.js';
 const CONVERTED_TYPE = 'converted-widget';
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN'];

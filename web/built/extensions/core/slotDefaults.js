@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { app } from '../../scripts/app.js';
-import { ComfyWidgets } from '../../scripts/widgets.js';
+import { ComfyWidgets } from '../../scripts/canvas-manager/widgets.js';
 const extensionObj = {
     name: 'Comfy.SlotDefaults',
     suggestionsNumber: null,

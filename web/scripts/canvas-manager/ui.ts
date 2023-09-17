@@ -1,5 +1,5 @@
-import { api } from './api.js'
-import type { ComfyApp } from './app.js'
+import { api } from '../api.js'
+import type { CanvasManager } from './index.js'
 
 /**
  * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。
@@ -362,7 +362,7 @@ class ComfySettingsDialog extends ComfyDialog {
     name,
     type,
     defaultValue,
-    onChange = ((newValue, oldValue?) => {}),
+    onChange = (newValue, oldValue?) => {},
     attrs = {},
     tooltip = '',
     options = undefined
@@ -587,22 +587,22 @@ class ComfySettingsDialog extends ComfyDialog {
 }
 
 export class ComfyUI {
-  menuContainer = null
-  app: ComfyApp = null
-  dialog: ComfyDialog = null
-  settings: ComfySettingsDialog = null
-  queue: ComfyList = null
-  history: ComfyList = null
-  queueSize: CustomElement = null
+  menuContainer
+  app: ComfyCenter
+  dialog: ComfyDialog
+  settings: ComfySettingsDialog
+  queue: ComfyList
+  history: ComfyList
+  queueSize: CustomElement
   lastQueueSize: number | string = 0
   batchCount: number = 0
 
   /**
    * Represents the UI of the application.
    * @constructor
-   * @param {ComfyApp} app - The main application object.
+   * @param app - The main application object.
    */
-  constructor(app: ComfyApp) {
+  constructor(app: ComfyCenter) {
     this.app = app
     this.dialog = new ComfyDialog()
     this.settings = new ComfySettingsDialog()
@@ -638,7 +638,7 @@ export class ComfyUI {
       $el('button.comfy-queue-btn', {
         id: 'queue-button',
         textContent: 'Queue Runner',
-        onclick: () => app.queueRunner(0, this.batchCount)
+        onclick: () => app.stateHandler.queueRunner(0, this.batchCount)
       }),
       $el('div', {}, [
         $el('label', { innerHTML: 'Extra options' }, [
@@ -734,7 +734,7 @@ export class ComfyUI {
         (document.getElementById('autoQueueCheckbox') as HTMLInputElement)
           .checked
       ) {
-        this.app.queueRunner(0, this.batchCount)
+        this.app.stateHandler.queueRunner(0, this.batchCount)
       }
       this.lastQueueSize = status.exec_info.queue_remaining
     }
@@ -749,14 +749,14 @@ class ComfyList {
   #text: string // The text to display in the list.
   element: CustomElement // The list element.
   button: HTMLButtonElement
-  app: ComfyApp
+  app: ComfyCenter
 
   /**
    * Creates a new ComfyList instance.
    * @param {string} text - The text to display in the list.
    * @param {string} [type] - The type of the list. Defaults to the lowercase version of the text.
    */
-  constructor(text: string, app: ComfyApp, type?: string) {
+  constructor(text: string, app: ComfyCenter, type?: string) {
     this.#text = text
     this.#type = type || text.toLowerCase()
     this.element = $el('div.comfy-list')
@@ -795,11 +795,11 @@ class ComfyList {
                   $el('button', {
                     textContent: 'Load',
                     onclick: () => {
-                      this.app.loadGraphData(
+                      this.app.workflowManager.loadGraphData(
                         item.prompt[3].extra_pnginfo.workflow
                       )
                       if (item.outputs) {
-                        this.app.nodeOutputs = item.outputs
+                        this.app.stateHandler.nodeOutputs = item.outputs
                       }
                     }
                   }),

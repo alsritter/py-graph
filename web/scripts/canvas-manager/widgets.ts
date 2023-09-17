@@ -1,5 +1,4 @@
-import type { ComfyApp } from './app.js'
-import { api } from './api.js'
+import { api } from '../api.js'
 
 function getNumberDefaults(inputData, defaultStep) {
   let defaultVal = inputData[1]['default']
@@ -118,7 +117,7 @@ function addMultilineWidget(
   node: LGraphNode,
   name: string,
   opts: { [key: string]: any },
-  app: ComfyApp
+  app: ComfyCenter
 ) {
   const MIN_SIZE = 50
 
@@ -187,7 +186,8 @@ function addMultilineWidget(
         // Calculate it here instead
         computeSize(node.size)
       }
-      const visible = app.canvas.ds.scale > 0.5 && this.type === 'customtext'
+      const visible =
+        app.canvasManager.canvas.ds.scale > 0.5 && this.type === 'customtext'
       const margin = 10
       const elRect = ctx.canvas.getBoundingClientRect()
       const transform = new DOMMatrix()
@@ -209,8 +209,7 @@ function addMultilineWidget(
         position: 'absolute',
         background: !node.color ? '' : node.color,
         color: !node.color ? '' : 'white',
-        // @ts-ignore
-        zIndex: app.graph._nodes.indexOf(node)
+        zIndex: app.canvasManager.graph._nodes.indexOf(node)
       })
       this.inputEl.hidden = !visible
     }
@@ -230,13 +229,12 @@ function addMultilineWidget(
 
   node.addCustomWidget(widget)
 
-  app.canvas.onDrawBackground = function () {
+  app.canvasManager.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen
     // if it goes off screen quickly, the input may not be removed
     // this shifts it off screen so it can be moved back if the node is visible.
-    for (let i in app.graph._nodes) {
-      // @ts-ignore
-      const n = app.graph._nodes[i] as LGraphNode
+    for (let i in app.canvasManager.graph._nodes) {
+      const n = app.canvasManager.graph._nodes[i]
       for (let w in n.widgets) {
         let wid = n.widgets[w]
         if (Object.hasOwn(wid, 'inputEl')) {
@@ -286,8 +284,8 @@ function addMultilineWidget(
   return { minWidth: 400, minHeight: 200, widget }
 }
 
-function isSlider(display, app) {
-  if (app.ui.settings.getSettingValue('Comfy.DisableSliders')) {
+function isSlider(display: string, app: ComfyCenter) {
+  if (app.canvasManager.ui.settings.getSettingValue('Comfy.DisableSliders')) {
     return 'number'
   }
   return display === 'slider' ? 'slider' : 'number'
@@ -297,7 +295,7 @@ function isSlider(display, app) {
  * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
  */
 export const ComfyWidgets = {
-  FLOAT(node: LGraphNode, inputName, inputData, app) {
+  FLOAT(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     let widgetType = isSlider(inputData[1]['display'], app) as widgetTypes
     const defaultInput = !!inputData[1].default_input
     let { val, config } = getNumberDefaults(inputData, 0.5)
@@ -334,11 +332,11 @@ export const ComfyWidgets = {
       })
     }
   },
-  STRING(node, inputName, inputData, app) {
+  STRING(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     const defaultVal = inputData[1].default || ''
     const multiline = !!inputData[1].multiline
 
-    let res
+    let res: { widget: any; minWidth?: number; minHeight?: number }
     if (multiline) {
       res = addMultilineWidget(
         node,
@@ -357,7 +355,7 @@ export const ComfyWidgets = {
 
     return res
   },
-  COMBO(node, inputName, inputData, app: ComfyApp) {
+  COMBO(node, inputName, inputData, app: ComfyCenter) {
     const type = inputData[0]
     let defaultValue = type[0]
     if (inputData[1] && inputData[1].default) {
@@ -369,7 +367,7 @@ export const ComfyWidgets = {
       })
     }
   },
-  IMAGEUPLOAD(node: LGraphNode, inputName, inputData, app: ComfyApp) {
+  IMAGEUPLOAD(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     const imageWidget = node.widgets.find((w) => w.name === 'image')
     let uploadWidget
 
@@ -377,7 +375,7 @@ export const ComfyWidgets = {
       const img = new Image()
       img.onload = () => {
         node.imgs = [img]
-        app.graph.setDirtyCanvas(true)
+        app.canvasManager.graph.setDirtyCanvas(true)
       }
       let folder_separator = name.lastIndexOf('/')
       let subfolder = ''
@@ -386,7 +384,7 @@ export const ComfyWidgets = {
         name = name.substring(folder_separator + 1)
       }
       img.src = api.apiURL(
-        `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}`
+        `/view?filename=${name}&type=input&subfolder=${subfolder}${app.canvasManager.getPreviewFormatParam()}`
       )
       node.setSizeForImage?.()
     }
