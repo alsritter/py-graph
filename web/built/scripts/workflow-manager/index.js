@@ -13,17 +13,19 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
 var _WorkflowManager_instances, _WorkflowManager_addDropHandler;
-import { $el } from '../canvas-manager/ui.js';
+import { $el } from '../canvas-manager/tools.js';
 import { defaultGraph } from './defaultGraph.js';
 export class WorkflowManager {
     constructor(eventManager) {
         _WorkflowManager_instances.add(this);
         this.eventManager = eventManager;
     }
-    setup(config) {
+    init(config) {
         this.canvasManager = config.canvasManager;
         this.logging = config.logger;
         this.stateHandler = config.stateHandler;
+    }
+    setup() {
         let restored = false;
         try {
             const json = localStorage.getItem('workflow');

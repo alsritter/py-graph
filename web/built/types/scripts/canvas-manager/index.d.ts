@@ -8,6 +8,7 @@ export declare class CanvasManager implements Module {
     canvas: LGraphCanvas;
     ctx: CanvasRenderingContext2D;
     constructor(eventManager: EventManager);
-    setup(config: any): Promise<void>;
+    init(config: ComfyCenter): void;
+    setup(): Promise<void>;
     getPreviewFormatParam(): string;
 }

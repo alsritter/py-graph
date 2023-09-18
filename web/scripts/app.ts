@@ -56,6 +56,7 @@ export class ComfyApp {
 
     // 启动各个模块
     for (const module of modules) {
+      console.log(`Starting module ${module.constructor.name}`)
       await module.setup()
     }
 

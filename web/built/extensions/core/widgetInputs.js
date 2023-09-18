@@ -148,7 +148,7 @@ app.registerExtension({
                 return r;
             };
             function isNodeAtPos(pos) {
-                for (const n of app.graph._nodes) {
+                for (const n of app.canvasManager.graph._nodes) {
                     if (n.pos[0] === pos[0] && n.pos[1] === pos[1]) {
                         return true;
                     }
@@ -170,7 +170,7 @@ app.registerExtension({
                     }
                 }
                 const node = LiteGraph.createNode('PrimitiveNode');
-                app.graph.add(node);
+                app.canvasManager.graph.add(node);
                 const pos = [this.pos[0] - node.size[0] - 30, this.pos[1]];
                 while (isNodeAtPos(pos)) {
                     pos[1] += LiteGraph.NODE_TITLE_HEIGHT;
@@ -209,7 +209,7 @@ app.registerExtension({
                     if (!((_a = node.outputs[0].links) === null || _a === void 0 ? void 0 : _a.length))
                         return links;
                     for (const l of node.outputs[0].links) {
-                        const linkInfo = app.graph.links[l];
+                        const linkInfo = app.canvasManager.graph.links[l];
                         const n = (_b = node === null || node === void 0 ? void 0 : node.graph) === null || _b === void 0 ? void 0 : _b.getNodeById(linkInfo.target_id);
                         if (n && n.type == 'Reroute') {
                             links = links.concat(get_links(n));
@@ -222,7 +222,7 @@ app.registerExtension({
                 }
                 let links = get_links(this);
                 for (const l of links) {
-                    const linkInfo = app.graph.links[l];
+                    const linkInfo = app.canvasManager.graph.links[l];
                     const node = (_b = this.graph) === null || _b === void 0 ? void 0 : _b.getNodeById(linkInfo.target_id);
                     const input = node === null || node === void 0 ? void 0 : node.inputs[linkInfo.target_slot];
                     const widgetName = (_c = input === null || input === void 0 ? void 0 : input.widget) === null || _c === void 0 ? void 0 : _c.name;
@@ -231,7 +231,7 @@ app.registerExtension({
                         if (widget) {
                             widget.value = this.widgets[0].value;
                             if (widget.callback) {
-                                widget.callback(widget.value, app.canvas, node, app.canvas.graph_mouse);
+                                widget.callback(widget.value, app.canvasManager.canvas, node, app.canvasManager.canvas.graph_mouse);
                             }
                         }
                     }

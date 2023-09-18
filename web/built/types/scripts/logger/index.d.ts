@@ -3,7 +3,8 @@ export declare class Logger implements Module {
     #private;
     private canvasManager;
     constructor();
-    setup(config: any): void;
+    init(config: ComfyCenter): void;
+    setup(): void;
     entries: Array<{
         source: string;
         type: string;
@@ -34,6 +35,7 @@ export declare class Logger implements Module {
 }
 declare class ComfyLoggingDialog extends ComfyDialog {
     logging: Logger;
+    fileInput: CustomElement;
     constructor(logging: Logger);
     clear(): void;
     export(): void;

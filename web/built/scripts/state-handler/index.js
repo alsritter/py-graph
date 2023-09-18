@@ -26,9 +26,11 @@ export class StateHandler {
         _StateHandler_queueItems.set(this, []);
         _StateHandler_processingQueue.set(this, false);
     }
-    setup(config) {
+    init(config) {
         this.workflowManager = config.workflowManager;
         this.canvasManager = config.canvasManager;
+    }
+    setup() {
         __classPrivateFieldGet(this, _StateHandler_instances, "m", _StateHandler_addApiUpdateHandlers).call(this);
     }
     queueRunner(number, batchCount = 1) {
@@ -101,11 +103,11 @@ _StateHandler_queueItems = new WeakMap(), _StateHandler_processingQueue = new We
         this.canvasManager.ui.dialog.close();
     });
     api.addEventListener('progress', ({ detail }) => {
-        this.progressManager.progress = detail;
+        this.progress = detail;
         this.canvasManager.graph.setDirtyCanvas(true, false);
     });
     api.addEventListener('executing', ({ detail }) => {
-        this.progressManager.progress = null;
+        this.progress = null;
         this.runningNodeId = detail;
         this.canvasManager.graph.setDirtyCanvas(true, false);
         delete this.nodeManager.nodePreviewImages[this.runningNodeId];

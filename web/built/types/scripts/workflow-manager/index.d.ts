@@ -7,7 +7,8 @@ export declare class WorkflowManager implements Module {
     private stateHandler;
     private nodeManager;
     constructor(eventManager: EventManager);
-    setup(config: ComfyCenter): void;
+    init(config: ComfyCenter): void;
+    setup(): void;
     loadGraphData(graphData: any): Promise<void>;
     graphToRunner(): Promise<{
         workflow: serializedLGraph<SerializedLGraphNode<LGraphNode>, [number, number, number, number, number, string], SerializedLGraphGroup>;

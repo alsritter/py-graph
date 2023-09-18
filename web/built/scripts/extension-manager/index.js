@@ -12,7 +12,10 @@ export class ExtensionsManager {
     constructor(eventManager) {
         this.eventManager = eventManager;
     }
-    setup(config) {
+    init(config) {
+        this.extensions = [];
+    }
+    setup() {
         return __awaiter(this, void 0, void 0, function* () {
             const extensions = yield api.getExtensions();
             for (const ext of extensions) {

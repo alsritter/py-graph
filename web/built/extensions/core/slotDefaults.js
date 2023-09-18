@@ -15,7 +15,7 @@ const extensionObj = {
     init(app) {
         LiteGraph.search_filter_enabled = true;
         LiteGraph.middle_click_slot_add_default_node = true;
-        this.suggestionsNumber = app.ui.settings.addSetting({
+        this.suggestionsNumber = app.canvasManager.ui.settings.addSetting({
             id: 'Comfy.NodeSuggestions.number',
             name: 'Number of nodes suggestions',
             type: 'slider',

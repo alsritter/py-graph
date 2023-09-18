@@ -19,8 +19,10 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
     return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
 };
 var _Logger_enabled, _Logger_console;
-import { $el, ComfyDialog } from '../canvas-manager/ui.js';
 import { api } from '../api.js';
+import { ComfyDialog } from '../canvas-manager/ui.js';
+import { $el } from '../canvas-manager/tools.js';
+import { stringify, jsonReplacer } from './tools.js';
 $el('style', {
     textContent: `
         .comfy-logging-logs {
@@ -51,8 +53,10 @@ export class Logger {
         _Logger_console.set(this, {});
         this.dialog = new ComfyLoggingDialog(this);
     }
-    setup(config) {
+    init(config) {
         this.canvasManager = config.canvasManager;
+    }
+    setup() {
         this.addSetting();
         this.catchUnhandled();
         this.addInitData();
@@ -203,66 +207,16 @@ export class Logger {
     }
 }
 _Logger_enabled = new WeakMap(), _Logger_console = new WeakMap();
-function stringify(val, depth, replacer, space, onGetObjID) {
-    depth = isNaN(+depth) ? 1 : depth;
-    var recursMap = new WeakMap();
-    function _build(val, depth, o, a, r) {
-        return !val || typeof val != 'object'
-            ? val
-            : ((r = recursMap.has(val)),
-                recursMap.set(val, true),
-                (a = Array.isArray(val)),
-                r
-                    ? (o = (onGetObjID && onGetObjID(val)) || null)
-                    : JSON.stringify(val, function (k, v) {
-                        if (a || depth > 0) {
-                            if (replacer)
-                                v = replacer(k, v);
-                            if (!k)
-                                return (a = Array.isArray(v)), (val = v);
-                            !o && (o = a ? [] : {});
-                            o[k] = _build(v, a ? depth : depth - 1);
-                        }
-                    }),
-                o === void 0 ? (a ? [] : {}) : o);
-    }
-    return JSON.stringify(_build(val, depth), null, space);
-}
-const jsonReplacer = (k, v, ui) => {
-    if (v instanceof Array && v.length === 1) {
-        v = v[0];
-    }
-    if (v instanceof Date) {
-        v = v.toISOString();
-        if (ui) {
-            v = v.split('T')[1];
-        }
-    }
-    if (v instanceof Error) {
-        let err = '';
-        if (v.name)
-            err += v.name + '\n';
-        if (v.message)
-            err += v.message + '\n';
-        if (v.stack)
-            err += v.stack + '\n';
-        if (!err) {
-            err = v.toString();
-        }
-        v = err;
-    }
-    return v;
-};
-const fileInput = $el('input', {
-    type: 'file',
-    accept: '.json',
-    style: { display: 'none' },
-    parent: document.body
-});
 class ComfyLoggingDialog extends ComfyDialog {
     constructor(logging) {
         super();
         this.logging = logging;
+        this.fileInput = $el('input', {
+            type: 'file',
+            accept: '.json',
+            style: { display: 'none' },
+            parent: document.body
+        });
     }
     clear() {
         this.logging.clear();
@@ -286,10 +240,10 @@ class ComfyLoggingDialog extends ComfyDialog {
         }, 0);
     }
     import() {
-        fileInput.onchange = () => {
+        this.fileInput.onchange = () => {
             const reader = new FileReader();
             reader.onload = () => {
-                fileInput.remove();
+                this.fileInput.remove();
                 try {
                     const obj = JSON.parse(reader.result);
                     if (obj instanceof Array) {
@@ -303,9 +257,9 @@ class ComfyLoggingDialog extends ComfyDialog {
                     alert('Unable to load logs: ' + error.message);
                 }
             };
-            reader.readAsText(fileInput.files[0]);
+            reader.readAsText(this.fileInput.files[0]);
         };
-        fileInput.click();
+        this.fileInput.click();
     }
     createButtons() {
         return [

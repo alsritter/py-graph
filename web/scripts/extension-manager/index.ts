@@ -11,7 +11,9 @@ export class ExtensionsManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
-  init(config: ComfyCenter) {}
+  init(config: ComfyCenter) {
+    this.extensions = []
+  }
 
   /**
    * 从 API URL 加载扩展

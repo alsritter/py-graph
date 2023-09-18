@@ -13,7 +13,6 @@ import { WorkflowManager } from './workflow-manager/index.js';
 import { NodeManager } from './node-manager/index.js';
 import { EventManager } from './eventManager.js';
 import { StateHandler } from './state-handler/index.js';
-import { ProgressManager } from './progress-manager/index.js';
 import { Logger } from './logger/index.js';
 export class ComfyApp {
     constructor() { }
@@ -26,26 +25,27 @@ export class ComfyApp {
             this.canvasManager = new CanvasManager(eventManager);
             this.stateHandler = new StateHandler();
             this.workflowManager = new WorkflowManager(eventManager);
-            this.progressManager = new ProgressManager();
             const modules = [
                 this.extensionsManager,
                 this.canvasManager,
                 this.stateHandler,
                 this.nodeManager,
-                this.progressManager,
                 this.workflowManager,
                 this.logger
             ];
             for (const module of modules) {
-                yield module.setup({
+                yield module.init({
                     logger: this.logger,
                     nodeManager: this.nodeManager,
                     extensionsManager: this.extensionsManager,
                     canvasManager: this.canvasManager,
                     stateHandler: this.stateHandler,
                     workflowManager: this.workflowManager,
-                    progressManager: this.progressManager
                 });
+            }
+            for (const module of modules) {
+                console.log(`Starting module ${module.constructor.name}`);
+                yield module.setup();
             }
             yield eventManager.invokeExtensions('setup');
         });

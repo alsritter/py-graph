@@ -3,13 +3,17 @@ export declare class StateHandler implements Module {
     private workflowManager;
     private nodeManager;
     private canvasManager;
-    private progressManager;
     private logger;
+    progress: {
+        value: number;
+        max: number;
+    };
     lastNodeErrors: [];
     nodeOutputs: Record<string, any>;
     lastExecutionError: any;
     runningNodeId: any;
-    setup(config: ComfyCenter): void;
+    init(config: ComfyCenter): void;
+    setup(): void;
     queueRunner(number: any, batchCount?: number): Promise<void>;
     clean(): void;
 }

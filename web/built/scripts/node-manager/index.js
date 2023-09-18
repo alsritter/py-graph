@@ -20,22 +20,19 @@ export class NodeManager {
         _NodeManager_instances.add(this);
         this.eventManager = eventManager;
     }
-    setup(config) {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.canvasManager = config.canvasManager;
-            this.stateHandler = config.stateHandler;
-            yield this.registerNodes(config);
-        });
+    init(config) {
+        this.canvasManager = config.canvasManager;
+        this.stateHandler = config.stateHandler;
     }
-    registerNodes(config) {
+    setup() {
         return __awaiter(this, void 0, void 0, function* () {
-            const app = this;
             const defs = yield api.getNodeDefs();
-            yield this.registerNodesFromDefs(config, defs);
+            yield this.registerNodesFromDefs(defs);
+            __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addDrawNodeHandler).call(this);
             yield this.eventManager.invokeExtensions('registerCustomNodes');
         });
     }
-    registerNodesFromDefs(config, defs) {
+    registerNodesFromDefs(defs) {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.eventManager.invokeExtensions('addCustomNodeDefs', defs);
             const widgets = Object.assign({}, ComfyWidgets, ...(yield this.eventManager.invokeExtensions('getCustomWidgets')).filter(Boolean));
@@ -362,12 +359,11 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
             ctx.strokeStyle = fgcolor;
             ctx.globalAlpha = 1;
         }
-        if (self.progressManager.progress &&
+        if (self.stateHandler.progress &&
             node.id === +self.stateHandler.runningNodeId) {
             ctx.fillStyle = 'green';
             ctx.fillRect(0, 0, size[0] *
-                (self.progressManager.progress.value /
-                    self.progressManager.progress.max), 6);
+                (self.stateHandler.progress.value / self.stateHandler.progress.max), 6);
             ctx.fillStyle = bgcolor;
         }
         if (nodeErrors) {

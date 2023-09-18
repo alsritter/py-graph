@@ -1,4 +1,30 @@
-export declare function $el(tag: string, propsOrChildren?: CustomElement[] | CustomElement, children?: CustomElement[]): CustomElement;
+export declare class ComfyUI {
+    menuContainer: CustomElement;
+    app: ComfyCenter;
+    dialog: ComfyDialog;
+    settings: ComfySettingsDialog;
+    queue: ComfyList;
+    history: ComfyList;
+    queueSize: CustomElement;
+    lastQueueSize: number | string;
+    batchCount: number;
+    constructor(app: ComfyCenter);
+    setStatus(status: any): void;
+    dragElement(dragEl: CustomElement, settings: ComfySettingsDialog): void;
+}
+export declare class ComfyList {
+    #private;
+    element: CustomElement;
+    button: HTMLButtonElement;
+    app: ComfyCenter;
+    constructor(text: string, app: ComfyCenter, type?: string);
+    get visible(): boolean;
+    load(): Promise<void>;
+    update(): Promise<void>;
+    show(): Promise<void>;
+    hide(): void;
+    toggle(): boolean;
+}
 export declare class ComfyDialog {
     element: CustomElement;
     textElement: CustomElement;
@@ -7,7 +33,7 @@ export declare class ComfyDialog {
     close(): void;
     show(html: string | CustomElement): void;
 }
-declare class ComfySettingsDialog extends ComfyDialog {
+export declare class ComfySettingsDialog extends ComfyDialog {
     settings: any[];
     constructor();
     getSettingValue(id: string, defaultValue?: any): any;
@@ -26,30 +52,3 @@ declare class ComfySettingsDialog extends ComfyDialog {
     };
     show(): void;
 }
-export declare class ComfyUI {
-    menuContainer: any;
-    app: ComfyCenter;
-    dialog: ComfyDialog;
-    settings: ComfySettingsDialog;
-    queue: ComfyList;
-    history: ComfyList;
-    queueSize: CustomElement;
-    lastQueueSize: number | string;
-    batchCount: number;
-    constructor(app: ComfyCenter);
-    setStatus(status: any): void;
-}
-declare class ComfyList {
-    #private;
-    element: CustomElement;
-    button: HTMLButtonElement;
-    app: ComfyCenter;
-    constructor(text: string, app: ComfyCenter, type?: string);
-    get visible(): boolean;
-    load(): Promise<void>;
-    update(): Promise<void>;
-    show(): Promise<void>;
-    hide(): void;
-    toggle(): boolean;
-}
-export {};

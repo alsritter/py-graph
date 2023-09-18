@@ -3,7 +3,6 @@ import { ExtensionsManager } from './extension-manager/index.js';
 import { WorkflowManager } from './workflow-manager/index.js';
 import { NodeManager } from './node-manager/index.js';
 import { StateHandler } from './state-handler/index.js';
-import { ProgressManager } from './progress-manager/index.js';
 import { Logger } from './logger/index.js';
 export declare class ComfyApp {
     logger: Logger;
@@ -12,7 +11,6 @@ export declare class ComfyApp {
     canvasManager: CanvasManager;
     stateHandler: StateHandler;
     workflowManager: WorkflowManager;
-    progressManager: ProgressManager;
     constructor();
     setup(): Promise<void>;
     registerExtension(extension: ComfyExtension): void;
