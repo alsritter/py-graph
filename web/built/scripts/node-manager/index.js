@@ -50,18 +50,19 @@ export class NodeManager {
                     for (const inputName in inputs) {
                         const inputData = inputs[inputName];
                         const type = inputData[0];
+                        console.log('Adding input', inputName, type, inputData);
                         if ((_a = inputData[1]) === null || _a === void 0 ? void 0 : _a.forceInput) {
                             this.addInput(inputName, type);
                         }
                         else {
                             if (Array.isArray(type)) {
-                                Object.assign(config, widgets.COMBO(this, inputName, inputData, config) || {});
+                                Object.assign(config, widgets.COMBO(this, inputName, inputData, that) || {});
                             }
                             else if (`${type}:${inputName}` in widgets) {
-                                Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, config) || {});
+                                Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, that) || {});
                             }
                             else if (type in widgets) {
-                                Object.assign(config, widgets[type](this, inputName, inputData, config) || {});
+                                Object.assign(config, widgets[type](this, inputName, inputData, that) || {});
                             }
                             else {
                                 this.addInput(inputName, type);

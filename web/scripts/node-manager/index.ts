@@ -74,6 +74,7 @@ export class NodeManager implements Module {
             const inputData = inputs[inputName]
             const type = inputData[0]
 
+            console.log('Adding input', inputName, type, inputData)
             if (inputData[1]?.forceInput) {
               this.addInput(inputName, type)
             } else {
@@ -81,7 +82,7 @@ export class NodeManager implements Module {
                 // Enums
                 Object.assign(
                   config,
-                  widgets.COMBO(this, inputName, inputData, config) || {}
+                  widgets.COMBO(this, inputName, inputData, that) || {}
                 )
               } else if (`${type}:${inputName}` in widgets) {
                 // Support custom widgets by Type:Name
@@ -91,14 +92,14 @@ export class NodeManager implements Module {
                     this,
                     inputName,
                     inputData,
-                    config
+                    that
                   ) || {}
                 )
               } else if (type in widgets) {
                 // Standard type widgets
                 Object.assign(
                   config,
-                  widgets[type](this, inputName, inputData, config) || {}
+                  widgets[type](this, inputName, inputData, that) || {}
                 )
               } else {
                 // Node connection inputs
