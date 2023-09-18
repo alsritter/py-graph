@@ -2,15 +2,18 @@ import { api } from '../api.js'
 import { WorkflowManager } from '../workflow-manager/index.js'
 import { CanvasManager } from '../canvas-manager/index.js'
 import { NodeManager } from '../node-manager/index.js'
-import { ProgressManager } from '../progress-manager/index.js'
 import { Logger } from '../logger/index.js'
 
 export class StateHandler implements Module {
   private workflowManager: WorkflowManager
   private nodeManager: NodeManager
   private canvasManager: CanvasManager
-  private progressManager: ProgressManager
   private logger: Logger
+
+  /**
+   * Progress information object, including current value and maximum value
+   */
+  progress: { value: number; max: number }
 
   /**
    * List of entries to queue
@@ -44,10 +47,12 @@ export class StateHandler implements Module {
    */
   runningNodeId: any
 
-  setup(config: ComfyCenter) {
+  init(config: ComfyCenter) {
     this.workflowManager = config.workflowManager
     this.canvasManager = config.canvasManager
+  }
 
+  setup() {
     this.#addApiUpdateHandlers()
   }
 
@@ -129,13 +134,13 @@ export class StateHandler implements Module {
     })
 
     api.addEventListener('progress', ({ detail }) => {
-      this.progressManager.progress = detail
+      this.progress = detail
       // Clear the preview image for the node
       this.canvasManager.graph.setDirtyCanvas(true, false)
     })
 
     api.addEventListener('executing', ({ detail }) => {
-      this.progressManager.progress = null
+      this.progress = null
       this.runningNodeId = detail
       // Clear the preview image for the node
       this.canvasManager.graph.setDirtyCanvas(true, false)

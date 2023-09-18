@@ -4,7 +4,6 @@ import { WorkflowManager } from './workflow-manager/index.js'
 import { NodeManager } from './node-manager/index.js'
 import { EventManager } from './eventManager.js'
 import { StateHandler } from './state-handler/index.js'
-import { ProgressManager } from './progress-manager/index.js'
 import { Logger } from './logger/index.js'
 
 export class ComfyApp {
@@ -14,7 +13,6 @@ export class ComfyApp {
   canvasManager: CanvasManager
   stateHandler: StateHandler
   workflowManager: WorkflowManager
-  progressManager: ProgressManager
 
   /**
    * Constructor for the class
@@ -33,7 +31,6 @@ export class ComfyApp {
     this.canvasManager = new CanvasManager(eventManager)
     this.stateHandler = new StateHandler()
     this.workflowManager = new WorkflowManager(eventManager)
-    this.progressManager = new ProgressManager()
 
     // 注意这个加载顺序
     const modules: Module[] = [
@@ -41,21 +38,25 @@ export class ComfyApp {
       this.canvasManager,
       this.stateHandler,
       this.nodeManager,
-      this.progressManager,
       this.workflowManager,
       this.logger
     ]
 
+    // 初始化阶段
     for (const module of modules) {
-      await module.setup({
+      await module.init({
         logger: this.logger,
         nodeManager: this.nodeManager,
         extensionsManager: this.extensionsManager,
         canvasManager: this.canvasManager,
         stateHandler: this.stateHandler,
         workflowManager: this.workflowManager,
-        progressManager: this.progressManager
       })
+    }
+
+    // 启动各个模块
+    for (const module of modules) {
+      await module.setup()
     }
 
     await eventManager.invokeExtensions('setup')

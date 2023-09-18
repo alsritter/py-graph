@@ -1,5 +1,5 @@
 import { EventManager } from '../eventManager.js'
-import { ComfyUI, $el } from './ui.js'
+import { ComfyUI } from './ui.js'
 
 /**
  * 负责创建 LGraph 画布、调整窗口大小以及基础画布设置。
@@ -32,8 +32,7 @@ export class CanvasManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
-  async setup(config: any) {
-    this.ui = new ComfyUI(config)
+  init(config: ComfyCenter) {
     const mainCanvas = document.createElement('canvas')
     mainCanvas.style.touchAction = 'none'
     const canvasEl = (this.canvasEl = Object.assign(mainCanvas, {
@@ -65,6 +64,10 @@ export class CanvasManager implements Module {
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
 
+    this.ui = new ComfyUI(config)
+  }
+
+  async setup() {
     await this.eventManager.invokeExtensions('init')
   }
 

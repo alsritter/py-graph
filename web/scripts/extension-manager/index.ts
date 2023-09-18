@@ -11,10 +11,12 @@ export class ExtensionsManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
+  init(config: ComfyCenter) {}
+
   /**
    * 从 API URL 加载扩展
    */
-  async setup(config: any) {
+  async setup() {
     const extensions = await api.getExtensions()
     for (const ext of extensions) {
       try {

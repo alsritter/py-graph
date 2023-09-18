@@ -4,7 +4,6 @@ import type { Logger } from '../scripts/logger'
 import type { ExtensionsManager } from '../scripts/extension-manager/index'
 import type { StateHandler } from '../scripts/state-handler/index'
 import type { CanvasManager } from '../scripts/canvas-manager/index'
-import type { ProgressManager } from '../scripts/progress-manager/index'
 import { ComfyApp } from '../scripts/app'
 
 type Merge<M, N> = Omit<M, Extract<keyof M, keyof N>> & N
@@ -17,11 +16,11 @@ declare global {
     canvasManager: CanvasManager
     stateHandler: StateHandler
     workflowManager: WorkflowManager
-    progressManager: ProgressManager
   }
 
   interface Module {
-    setup(config: ComfyCenter)
+    init(config: ComfyCenter)
+    setup()
   }
 
   interface Position {

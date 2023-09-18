@@ -1,6 +1,8 @@
-import { $el, ComfyDialog } from '../canvas-manager/ui.js'
 import { api } from '../api.js'
+import { ComfyDialog } from '../canvas-manager/ui.js'
 import { CanvasManager } from '../canvas-manager/index.js'
+import { $el } from '../canvas-manager/tools.js'
+import { stringify, jsonReplacer } from './tools.js'
 
 $el('style', {
   textContent: `
@@ -33,8 +35,11 @@ export class Logger implements Module {
     this.dialog = new ComfyLoggingDialog(this)
   }
 
-  setup(config) {
+  init(config: ComfyCenter) {
     this.canvasManager = config.canvasManager
+  }
+
+  setup() {
     this.addSetting()
     this.catchUnhandled()
     this.addInitData()
@@ -219,81 +224,20 @@ export class Logger implements Module {
   }
 }
 
-// Stringify function supporting max depth and removal of circular references
-// https://stackoverflow.com/a/57193345
-function stringify(
-  val: object,
-  depth: number,
-  replacer?: (k: string, v: string | any[], ui?: boolean) => string | any[],
-  space?: string,
-  onGetObjID?: (arg0: object) => any
-) {
-  depth = isNaN(+depth) ? 1 : depth
-  var recursMap = new WeakMap()
-  function _build(
-    val: object,
-    depth: number,
-    o?: {},
-    a?: boolean,
-    r?: boolean
-  ) {
-    // (JSON.stringify() has it's own rules, which we respect here by using it for property iteration)
-    return !val || typeof val != 'object'
-      ? val
-      : ((r = recursMap.has(val)),
-        recursMap.set(val, true),
-        (a = Array.isArray(val)),
-        r
-          ? (o = (onGetObjID && onGetObjID(val)) || null)
-          : JSON.stringify(val, function (k, v) {
-              if (a || depth > 0) {
-                if (replacer) v = replacer(k, v)
-                if (!k) return (a = Array.isArray(v)), (val = v)
-                !o && (o = a ? [] : {})
-                o[k] = _build(v, a ? depth : depth - 1)
-              }
-            }),
-        o === void 0 ? (a ? [] : {}) : o)
-  }
-  return JSON.stringify(_build(val, depth), null, space)
-}
-
-const jsonReplacer = (k: string, v: string | any[], ui: boolean) => {
-  if (v instanceof Array && v.length === 1) {
-    v = v[0]
-  }
-  if (v instanceof Date) {
-    v = v.toISOString()
-    if (ui) {
-      v = v.split('T')[1]
-    }
-  }
-  if (v instanceof Error) {
-    let err = ''
-    if (v.name) err += v.name + '\n'
-    if (v.message) err += v.message + '\n'
-    if (v.stack) err += v.stack + '\n'
-    if (!err) {
-      err = v.toString()
-    }
-    v = err
-  }
-  return v
-}
-
-const fileInput = $el('input', {
-  type: 'file',
-  accept: '.json',
-  style: { display: 'none' },
-  parent: document.body
-})
-
 class ComfyLoggingDialog extends ComfyDialog {
   logging: Logger
+  fileInput: CustomElement
 
   constructor(logging: Logger) {
     super()
     this.logging = logging
+
+    this.fileInput = $el('input', {
+      type: 'file',
+      accept: '.json',
+      style: { display: 'none' },
+      parent: document.body
+    })
   }
 
   clear() {
@@ -323,10 +267,10 @@ class ComfyLoggingDialog extends ComfyDialog {
   }
 
   import() {
-    fileInput.onchange = () => {
+    this.fileInput.onchange = () => {
       const reader = new FileReader()
       reader.onload = () => {
-        fileInput.remove()
+        this.fileInput.remove()
         try {
           const obj = JSON.parse(reader.result as string)
           if (obj instanceof Array) {
@@ -338,9 +282,9 @@ class ComfyLoggingDialog extends ComfyDialog {
           alert('Unable to load logs: ' + error.message)
         }
       }
-      reader.readAsText(fileInput.files[0])
+      reader.readAsText(this.fileInput.files[0])
     }
-    fileInput.click()
+    this.fileInput.click()
   }
 
   createButtons() {

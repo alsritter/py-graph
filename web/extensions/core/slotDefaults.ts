@@ -9,7 +9,7 @@ const extensionObj: ComfyExtension = {
   init(app: ComfyApp) {
     LiteGraph.search_filter_enabled = true
     LiteGraph.middle_click_slot_add_default_node = true
-    this.suggestionsNumber = app.ui.settings.addSetting({
+    this.suggestionsNumber = app.canvasManager.ui.settings.addSetting({
       id: 'Comfy.NodeSuggestions.number',
       name: 'Number of nodes suggestions',
       type: 'slider',
@@ -26,7 +26,12 @@ const extensionObj: ComfyExtension = {
   },
   slot_types_default_out: {},
   slot_types_default_in: {},
-  async beforeRegisterNodeDef(nodeType, nodeData: ComfyObjectInfo, app) {
+
+  async beforeRegisterNodeDef(
+    nodeType,
+    nodeData: ComfyObjectInfo,
+    app: ComfyApp
+  ) {
     var nodeId = nodeData.name
     const inputs = nodeData.input?.required //only show required inputs to reduce the mess also not logical to create node with optional inputs
     for (const inputKey in inputs) {

@@ -1,4 +1,7 @@
-import { ComfyWidgets, addValueControlWidget } from '../../scripts/canvas-manager/widgets.js'
+import {
+  ComfyWidgets,
+  addValueControlWidget
+} from '../../scripts/canvas-manager/widgets.js'
 import { app } from '../../scripts/app.js'
 
 const CONVERTED_TYPE = 'converted-widget'
@@ -117,7 +120,7 @@ app.registerExtension({
    * @param app - 应用程序对象。
    * @returns - 异步操作的 Promise 对象。
    */
-  async beforeRegisterNodeDef(nodeType, nodeData, app) {
+  async beforeRegisterNodeDef(nodeType, nodeData, app: ComfyCenter) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
     const nodeTypePrototype = nodeType.prototype
@@ -200,7 +203,7 @@ app.registerExtension({
     }
 
     function isNodeAtPos(pos) {
-      for (const n of app.graph._nodes) {
+      for (const n of app.canvasManager.graph._nodes) {
         if (n.pos[0] === pos[0] && n.pos[1] === pos[1]) {
           return true
         }
@@ -234,7 +237,7 @@ app.registerExtension({
 
       // 创建一个原始节点
       const node = LiteGraph.createNode('PrimitiveNode')
-      app.graph.add(node)
+      app.canvasManager.graph.add(node)
 
       // 计算一个不会直接重叠其他节点的位置
       const pos = [this.pos[0] - node.size[0] - 30, this.pos[1]]
@@ -279,7 +282,7 @@ app.registerExtension({
           if (!node.outputs[0].links?.length) return links
 
           for (const l of node.outputs[0].links) {
-            const linkInfo = app.graph.links[l]
+            const linkInfo = app.canvasManager.graph.links[l]
             const n = node?.graph?.getNodeById(linkInfo.target_id)
             if (n && n.type == 'Reroute') {
               links = links.concat(get_links(n))
@@ -293,7 +296,7 @@ app.registerExtension({
         let links = get_links(this)
         // For each output link copy our value over the original widget value
         for (const l of links) {
-          const linkInfo = app.graph.links[l]
+          const linkInfo = app.canvasManager.graph.links[l]
           const node = this.graph?.getNodeById(linkInfo.target_id)
           const input = node?.inputs[linkInfo.target_slot]
           const widgetName = input?.widget?.name
@@ -304,9 +307,9 @@ app.registerExtension({
               if (widget.callback) {
                 widget.callback(
                   widget.value,
-                  app.canvas,
+                  app.canvasManager.canvas,
                   node as LGraphNode,
-                  app.canvas.graph_mouse
+                  app.canvasManager.canvas.graph_mouse
                 )
               }
             }

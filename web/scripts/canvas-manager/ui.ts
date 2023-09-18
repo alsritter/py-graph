@@ -1,233 +1,465 @@
 import { api } from '../api.js'
+import { $el } from './tools.js'
 import type { CanvasManager } from './index.js'
 
-/**
- * 创建并渲染HTML元素，并根据提供的参数设置其属性和内容。
- *
- * @param {string} tag - 要创建的HTML元素的标签名称，可以包含类名，如 "div.my-class".
- */
-export function $el(
-  tag: string,
-  propsOrChildren?: CustomElement[] | CustomElement,
-  children?: CustomElement[]
-): CustomElement {
-  const split = tag.split('.')
-  const element = document.createElement(split.shift())
-  if (split.length > 0) {
-    element.classList.add(...split)
+export class ComfyUI {
+  menuContainer: CustomElement
+  app: ComfyCenter
+  dialog: ComfyDialog
+  settings: ComfySettingsDialog
+  queue: ComfyList
+  history: ComfyList
+  queueSize: CustomElement
+  lastQueueSize: number | string = 0
+  batchCount: number = 0
+
+  /**
+   * Represents the UI of the application.
+   * @constructor
+   * @param app - The main application object.
+   */
+  constructor(app: ComfyCenter) {
+    this.app = app
+    this.dialog = new ComfyDialog()
+    this.settings = new ComfySettingsDialog()
+    this.queue = new ComfyList('Queue', app)
+    this.history = new ComfyList('History', app)
+
+    api.addEventListener('status', () => {
+      this.queue.update()
+      this.history.update()
+    })
+
+    // 创建菜单容器
+    this.menuContainer = $el('div.comfy-menu', { parent: document.body }, [
+      // 注意，这个 class 名称是有对应样式的
+      $el(
+        'div.drag-handle',
+        {
+          style: {
+            position: 'relative',
+            width: '100%',
+            cursor: 'default'
+          }
+        },
+        [
+          $el('span.drag-handle'),
+          $el('span', { $: (q) => (this.queueSize = q) }),
+          $el('button.comfy-settings-btn', {
+            textContent: '⚙️',
+            onclick: () => this.settings.show()
+          })
+        ]
+      ),
+      $el('button.comfy-queue-btn', {
+        id: 'queue-button',
+        textContent: 'Queue Runner',
+        onclick: () => app.stateHandler.queueRunner(0, this.batchCount)
+      }),
+      $el('div', {}, [
+        $el('label', { innerHTML: 'Extra options' }, [
+          $el('input', {
+            type: 'checkbox',
+            onchange: (i) => {
+              document.getElementById('extraOptions').style.display = i.target
+                .checked
+                ? 'block'
+                : 'none'
+              this.batchCount = i.target.checked
+                ? Number(
+                    (
+                      document.getElementById(
+                        'batchCountInputRange'
+                      ) as HTMLInputElement
+                    ).value
+                  )
+                : 1
+
+              const element = document.getElementById(
+                'autoQueueCheckbox'
+              ) as HTMLInputElement
+              element.checked = false
+            }
+          })
+        ])
+      ]),
+      $el(
+        'div',
+        { id: 'extraOptions', style: { width: '100%', display: 'none' } },
+        [
+          $el('label', { innerHTML: 'Batch count' }, [
+            $el('input', {
+              id: 'batchCountInputNumber',
+              type: 'number',
+              value: this.batchCount,
+              min: '1',
+              style: { width: '35%', 'margin-left': '0.4em' },
+              oninput: (i) => {
+                this.batchCount = i.target.value(
+                  document.getElementById(
+                    'batchCountInputRange'
+                  ) as HTMLInputElement
+                ).value = this.batchCount
+              }
+            }),
+            $el('input', {
+              id: 'batchCountInputRange',
+              type: 'range',
+              min: '1',
+              max: '100',
+              value: this.batchCount,
+              oninput: (i) => {
+                this.batchCount = i.target.value
+                const element = document.getElementById(
+                  'batchCountInputNumber'
+                ) as HTMLInputElement
+                element.value = i.target.value
+              }
+            }),
+            $el('input', {
+              id: 'autoQueueCheckbox',
+              type: 'checkbox',
+              checked: false,
+              title: 'automatically queue runner when the queue size hits 0'
+            })
+          ])
+        ]
+      )
+    ])
+
+    this.settings.addSetting({
+      id: 'Comfy.MenuPosition',
+      name: 'Save menu position',
+      type: 'boolean',
+      defaultValue: true
+    })
+
+    this.dragElement(this.menuContainer, this.settings)
+
+    this.setStatus({ exec_info: { queue_remaining: 'X' } })
   }
 
-  if (propsOrChildren) {
-    if (Array.isArray(propsOrChildren)) {
-      element.append(...(propsOrChildren as Node[]))
-    } else {
-      const { parent, $: cb, dataset, style } = propsOrChildren
-      delete propsOrChildren.parent
-      delete propsOrChildren.$
-      delete propsOrChildren.dataset
-      delete propsOrChildren.style
-
-      if (Object.hasOwn(propsOrChildren, 'for')) {
-        element.setAttribute('for', propsOrChildren.for)
+  /**
+   * 更新队列大小的显示。
+   * @param status
+   */
+  setStatus(status) {
+    this.queueSize.textContent =
+      'Queue size: ' + (status ? status.exec_info.queue_remaining : 'ERR')
+    if (status) {
+      if (
+        this.lastQueueSize != 0 &&
+        status.exec_info.queue_remaining == 0 &&
+        (document.getElementById('autoQueueCheckbox') as HTMLInputElement)
+          .checked
+      ) {
+        this.app.stateHandler.queueRunner(0, this.batchCount)
       }
-
-      if (style) {
-        Object.assign(element.style, style)
-      }
-
-      if (dataset) {
-        Object.assign(element.dataset, dataset)
-      }
-
-      Object.assign(element, propsOrChildren)
-      if (children) {
-        element.append(...(children as Node[]))
-      }
-
-      if (parent) {
-        parent.append(element)
-      }
-
-      if (cb) {
-        cb(element as CustomElement)
-      }
+      this.lastQueueSize = status.exec_info.queue_remaining
     }
   }
 
-  return element as CustomElement
-}
-
-/**
- * 实现拖拽功能的函数，用于让指定元素可以通过鼠标拖动来改变其位置。
- *
- * @param {HTMLElement} dragEl - 要应用拖拽功能的元素。
- * @param {ComfySettingsDialog} settings - 可选参数，用于设置选项弹窗的位置。
- */
-function dragElement(dragEl: CustomElement, settings: ComfySettingsDialog) {
-  // 内部变量初始化
-  var posDiffX = 0,
-    posDiffY = 0,
-    posStartX = 0,
-    posStartY = 0,
-    newPosX = 0,
-    newPosY = 0
-
-  // 绑定鼠标按下事件，启动拖拽
-  if (dragEl.getElementsByClassName('drag-handle')[0]) {
-    // 如果有拖拽手柄，从手柄进行拖拽
-    ;(
-      dragEl.getElementsByClassName('drag-handle')[0] as HTMLElement
-    ).onmousedown = dragMouseDown
-  } else {
-    // 否则，从元素内任意位置进行拖拽
-    dragEl.onmousedown = dragMouseDown
-  }
-
-  // 设置当元素大小发生改变时，保持在窗口内部
-  const resizeObserver = new ResizeObserver(() => {
-    ensureInBounds()
-  }).observe(dragEl as Element)
-
   /**
-   * 确保元素在窗口内部，如果有手动设置位置的类
+   * 实现拖拽功能的函数，用于让指定元素可以通过鼠标拖动来改变其位置。
+   *
+   * @param {HTMLElement} dragEl - 要应用拖拽功能的元素。
+   * @param {ComfySettingsDialog} settings - 可选参数，用于设置选项弹窗的位置。
    */
-  function ensureInBounds() {
-    // 只有在拥有 "comfy-menu-manual-pos" 类时才进行边界检查和调整
-    if (dragEl.classList.contains('comfy-menu-manual-pos')) {
+  dragElement(dragEl: CustomElement, settings: ComfySettingsDialog) {
+    // 内部变量初始化
+    var posDiffX = 0,
+      posDiffY = 0,
+      posStartX = 0,
+      posStartY = 0,
+      newPosX = 0,
+      newPosY = 0
+
+    // 绑定鼠标按下事件，启动拖拽
+    if (dragEl.getElementsByClassName('drag-handle')[0]) {
+      // 如果有拖拽手柄，从手柄进行拖拽
+      ;(
+        dragEl.getElementsByClassName('drag-handle')[0] as HTMLElement
+      ).onmousedown = dragMouseDown
+    } else {
+      // 否则，从元素内任意位置进行拖拽
+      dragEl.onmousedown = dragMouseDown
+    }
+
+    // 设置当元素大小发生改变时，保持在窗口内部
+    const resizeObserver = new ResizeObserver(() => {
+      ensureInBounds()
+    }).observe(dragEl as Element)
+
+    /**
+     * 确保元素在窗口内部，如果有手动设置位置的类
+     */
+    function ensureInBounds() {
+      // 只有在拥有 "comfy-menu-manual-pos" 类时才进行边界检查和调整
+      if (dragEl.classList.contains('comfy-menu-manual-pos')) {
+        newPosX = Math.min(
+          document.body.clientWidth - dragEl.clientWidth,
+          Math.max(0, dragEl.offsetLeft)
+        )
+        newPosY = Math.min(
+          document.body.clientHeight - dragEl.clientHeight,
+          Math.max(0, dragEl.offsetTop)
+        )
+
+        positionElement()
+      }
+    }
+
+    /**
+     * 根据位置设置元素样式
+     */
+    function positionElement() {
+      const halfWidth = document.body.clientWidth / 2
+      const anchorRight = newPosX + dragEl.clientWidth / 2 > halfWidth
+
+      if (anchorRight) {
+        // 如果位置在右侧，将元素向右对齐
+        dragEl.style.left = 'unset'
+        dragEl.style.right =
+          document.body.clientWidth - newPosX - dragEl.clientWidth + 'px'
+      } else {
+        // 否则，将元素向左对齐
+        dragEl.style.left = newPosX + 'px'
+        dragEl.style.right = 'unset'
+      }
+
+      dragEl.style.top = newPosY + 'px'
+      dragEl.style.bottom = 'unset'
+
+      // 保存位置信息到本地存储
+      if (savePos) {
+        localStorage.setItem(
+          'Comfy.MenuPosition',
+          JSON.stringify({
+            x: dragEl.offsetLeft,
+            y: dragEl.offsetTop
+          })
+        )
+      }
+    }
+
+    /**
+     * 从本地存储恢复位置信息
+     */
+    function restorePos() {
+      const posStr = localStorage.getItem('Comfy.MenuPosition')
+      if (posStr) {
+        const pos: Position = JSON.parse(posStr)
+        newPosX = pos.x
+        newPosY = pos.y
+        positionElement()
+        ensureInBounds()
+      }
+    }
+
+    /**
+     * 鼠标按下事件处理函数，启动元素拖拽
+     */
+    function dragMouseDown(e) {
+      e = e || window.event
+      e.preventDefault()
+
+      // 记录鼠标按下时的初始位置
+      posStartX = e.clientX
+      posStartY = e.clientY
+
+      // 鼠标按下后绑定事件，启动元素拖拽
+      document.onmouseup = closeDragElement
+      document.onmousemove = elementDrag
+    }
+
+    /**
+     * 鼠标移动事件处理函数，实现元素拖拽
+     */
+    function elementDrag(e) {
+      e = e || window.event
+      e.preventDefault()
+
+      // 添加类以标记元素被手动调整过位置
+      dragEl.classList.add('comfy-menu-manual-pos')
+
+      // 计算鼠标移动的差值
+      posDiffX = e.clientX - posStartX
+      posDiffY = e.clientY - posStartY
+      posStartX = e.clientX
+      posStartY = e.clientY
+
+      // 计算新的位置并进行边界检查
       newPosX = Math.min(
         document.body.clientWidth - dragEl.clientWidth,
-        Math.max(0, dragEl.offsetLeft)
+        Math.max(0, dragEl.offsetLeft + posDiffX)
       )
       newPosY = Math.min(
         document.body.clientHeight - dragEl.clientHeight,
-        Math.max(0, dragEl.offsetTop)
+        Math.max(0, dragEl.offsetTop + posDiffY)
       )
 
+      // 更新元素位置
       positionElement()
     }
-  }
 
-  /**
-   * 根据位置设置元素样式
-   */
-  function positionElement() {
-    const halfWidth = document.body.clientWidth / 2
-    const anchorRight = newPosX + dragEl.clientWidth / 2 > halfWidth
-
-    if (anchorRight) {
-      // 如果位置在右侧，将元素向右对齐
-      dragEl.style.left = 'unset'
-      dragEl.style.right =
-        document.body.clientWidth - newPosX - dragEl.clientWidth + 'px'
-    } else {
-      // 否则，将元素向左对齐
-      dragEl.style.left = newPosX + 'px'
-      dragEl.style.right = 'unset'
-    }
-
-    dragEl.style.top = newPosY + 'px'
-    dragEl.style.bottom = 'unset'
-
-    // 保存位置信息到本地存储
-    if (savePos) {
-      localStorage.setItem(
-        'Comfy.MenuPosition',
-        JSON.stringify({
-          x: dragEl.offsetLeft,
-          y: dragEl.offsetTop
-        })
-      )
-    }
-  }
-
-  /**
-   * 从本地存储恢复位置信息
-   */
-  function restorePos() {
-    const posStr = localStorage.getItem('Comfy.MenuPosition')
-    if (posStr) {
-      const pos: Position = JSON.parse(posStr)
-      newPosX = pos.x
-      newPosY = pos.y
-      positionElement()
+    // 在窗口大小调整时，确保元素在窗口内部
+    window.addEventListener('resize', () => {
       ensureInBounds()
+    })
+
+    /**
+     * 鼠标释放事件处理函数，停止元素拖拽
+     */
+    function closeDragElement() {
+      // 停止拖拽
+      document.onmouseup = null
+      document.onmousemove = null
     }
-  }
 
-  /**
-   * 鼠标按下事件处理函数，启动元素拖拽
-   */
-  function dragMouseDown(e) {
-    e = e || window.event
-    e.preventDefault()
-
-    // 记录鼠标按下时的初始位置
-    posStartX = e.clientX
-    posStartY = e.clientY
-
-    // 鼠标按下后绑定事件，启动元素拖拽
-    document.onmouseup = closeDragElement
-    document.onmousemove = elementDrag
-  }
-
-  /**
-   * 鼠标移动事件处理函数，实现元素拖拽
-   */
-  function elementDrag(e) {
-    e = e || window.event
-    e.preventDefault()
-
-    // 添加类以标记元素被手动调整过位置
-    dragEl.classList.add('comfy-menu-manual-pos')
-
-    // 计算鼠标移动的差值
-    posDiffX = e.clientX - posStartX
-    posDiffY = e.clientY - posStartY
-    posStartX = e.clientX
-    posStartY = e.clientY
-
-    // 计算新的位置并进行边界检查
-    newPosX = Math.min(
-      document.body.clientWidth - dragEl.clientWidth,
-      Math.max(0, dragEl.offsetLeft + posDiffX)
-    )
-    newPosY = Math.min(
-      document.body.clientHeight - dragEl.clientHeight,
-      Math.max(0, dragEl.offsetTop + posDiffY)
-    )
-
-    // 更新元素位置
-    positionElement()
-  }
-
-  // 在窗口大小调整时，确保元素在窗口内部
-  window.addEventListener('resize', () => {
-    ensureInBounds()
-  })
-
-  /**
-   * 鼠标释放事件处理函数，停止元素拖拽
-   */
-  function closeDragElement() {
-    // 停止拖拽
-    document.onmouseup = null
-    document.onmousemove = null
-  }
-
-  // 用于保存位置信息设置
-  let savePos = undefined
-  settings.addSetting({
-    id: 'Comfy.MenuPosition',
-    name: 'Save menu position',
-    type: 'boolean',
-    defaultValue: savePos,
-    onChange(value, oldVal) {
-      if (savePos === undefined && value) {
-        restorePos()
+    // 用于保存位置信息设置
+    let savePos = undefined
+    settings.addSetting({
+      id: 'Comfy.MenuPosition',
+      name: 'Save menu position',
+      type: 'boolean',
+      defaultValue: savePos,
+      onChange(value, oldVal) {
+        if (savePos === undefined && value) {
+          restorePos()
+        }
+        savePos = value
       }
-      savePos = value
+    })
+  }
+}
+
+/**
+ * Represents a list of items with a custom remove action and load action.
+ */
+export class ComfyList {
+  #type: string // The type of the list.
+  #text: string // The text to display in the list.
+  element: CustomElement // The list element.
+  button: HTMLButtonElement
+  app: ComfyCenter
+
+  /**
+   * Creates a new ComfyList instance.
+   * @param {string} text - The text to display in the list.
+   * @param {string} [type] - The type of the list. Defaults to the lowercase version of the text.
+   */
+  constructor(text: string, app: ComfyCenter, type?: string) {
+    this.#text = text
+    this.#type = type || text.toLowerCase()
+    this.element = $el('div.comfy-list')
+    this.element.style.display = 'none'
+    this.app = app
+  }
+
+  /**
+   * Gets whether the list is currently visible.
+   * @returns {boolean} - True if the list is visible, false otherwise.
+   */
+  get visible(): boolean {
+    return this.element.style.display !== 'none'
+  }
+
+  /**
+   * Loads the items in the list from the API.
+   */
+  async load() {
+    const items = await api.getItems(this.#type)
+    this.element.replaceChildren(
+      ...Object.keys(items).flatMap(
+        (section) =>
+          [
+            $el('h4', {
+              textContent: section
+            }),
+            $el('div.comfy-list-items', [
+              ...items[section].map((item) => {
+                // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
+                const removeAction = item.remove || {
+                  name: 'Delete',
+                  cb: () => api.deleteItem(this.#type, item.prompt[1])
+                }
+                return $el('div', { textContent: item.prompt[0] + ': ' }, [
+                  $el('button', {
+                    textContent: 'Load',
+                    onclick: () => {
+                      this.app.workflowManager.loadGraphData(
+                        item.prompt[3].extra_pnginfo.workflow
+                      )
+                      if (item.outputs) {
+                        this.app.stateHandler.nodeOutputs = item.outputs
+                      }
+                    }
+                  }),
+                  $el('button', {
+                    textContent: removeAction.name,
+                    onclick: async () => {
+                      await removeAction.cb()
+                      await this.update()
+                    }
+                  })
+                ])
+              })
+            ])
+          ] as Node[]
+      ),
+      $el('div.comfy-list-actions', [
+        $el('button', {
+          textContent: 'Clear ' + this.#text,
+          onclick: async () => {
+            await api.clearItems(this.#type)
+            await this.load()
+          }
+        }),
+        $el('button', { textContent: 'Refresh', onclick: () => this.load() })
+      ]) as Node
+    )
+  }
+
+  /**
+   * Updates the list if it is currently visible.
+   */
+  async update() {
+    if (this.visible) {
+      await this.load()
     }
-  })
+  }
+
+  /**
+   * Shows the list.
+   */
+  async show() {
+    this.element.style.display = 'block'
+    this.button.textContent = 'Close'
+
+    await this.load()
+  }
+
+  /**
+   * Hides the list.
+   */
+  hide() {
+    this.element.style.display = 'none'
+    this.button.textContent = 'View ' + this.#text
+  }
+
+  /**
+   * Toggles the visibility of the list.
+   * @returns {boolean} - True if the list is now visible, false otherwise.
+   */
+  toggle(): boolean {
+    if (this.visible) {
+      this.hide()
+      return false
+    } else {
+      this.show()
+      return true
+    }
+  }
 }
 
 /**
@@ -290,7 +522,7 @@ export class ComfyDialog {
  * 表示一个设置对话框的扩展类，用于创建和管理可自定义设置的模态对话框。
  * 继承自 ComfyDialog 类。
  */
-class ComfySettingsDialog extends ComfyDialog {
+export class ComfySettingsDialog extends ComfyDialog {
   settings = []
 
   constructor() {
@@ -583,289 +815,5 @@ class ComfySettingsDialog extends ComfyDialog {
       ...this.settings.map((s) => s.render())
     )
     this.element.showModal()
-  }
-}
-
-export class ComfyUI {
-  menuContainer
-  app: ComfyCenter
-  dialog: ComfyDialog
-  settings: ComfySettingsDialog
-  queue: ComfyList
-  history: ComfyList
-  queueSize: CustomElement
-  lastQueueSize: number | string = 0
-  batchCount: number = 0
-
-  /**
-   * Represents the UI of the application.
-   * @constructor
-   * @param app - The main application object.
-   */
-  constructor(app: ComfyCenter) {
-    this.app = app
-    this.dialog = new ComfyDialog()
-    this.settings = new ComfySettingsDialog()
-    this.queue = new ComfyList('Queue', app)
-    this.history = new ComfyList('History', app)
-
-    api.addEventListener('status', () => {
-      this.queue.update()
-      this.history.update()
-    })
-
-    // 创建菜单容器
-    this.menuContainer = $el('div.comfy-menu', { parent: document.body }, [
-      // 注意，这个 class 名称是有对应样式的
-      $el(
-        'div.drag-handle',
-        {
-          style: {
-            position: 'relative',
-            width: '100%',
-            cursor: 'default'
-          }
-        },
-        [
-          $el('span.drag-handle'),
-          $el('span', { $: (q) => (this.queueSize = q) }),
-          $el('button.comfy-settings-btn', {
-            textContent: '⚙️',
-            onclick: () => this.settings.show()
-          })
-        ]
-      ),
-      $el('button.comfy-queue-btn', {
-        id: 'queue-button',
-        textContent: 'Queue Runner',
-        onclick: () => app.stateHandler.queueRunner(0, this.batchCount)
-      }),
-      $el('div', {}, [
-        $el('label', { innerHTML: 'Extra options' }, [
-          $el('input', {
-            type: 'checkbox',
-            onchange: (i) => {
-              document.getElementById('extraOptions').style.display = i.target
-                .checked
-                ? 'block'
-                : 'none'
-              this.batchCount = i.target.checked
-                ? Number(
-                    (
-                      document.getElementById(
-                        'batchCountInputRange'
-                      ) as HTMLInputElement
-                    ).value
-                  )
-                : 1
-
-              const element = document.getElementById(
-                'autoQueueCheckbox'
-              ) as HTMLInputElement
-              element.checked = false
-            }
-          })
-        ])
-      ]),
-      $el(
-        'div',
-        { id: 'extraOptions', style: { width: '100%', display: 'none' } },
-        [
-          $el('label', { innerHTML: 'Batch count' }, [
-            $el('input', {
-              id: 'batchCountInputNumber',
-              type: 'number',
-              value: this.batchCount,
-              min: '1',
-              style: { width: '35%', 'margin-left': '0.4em' },
-              oninput: (i) => {
-                this.batchCount = i.target.value(
-                  document.getElementById(
-                    'batchCountInputRange'
-                  ) as HTMLInputElement
-                ).value = this.batchCount
-              }
-            }),
-            $el('input', {
-              id: 'batchCountInputRange',
-              type: 'range',
-              min: '1',
-              max: '100',
-              value: this.batchCount,
-              oninput: (i) => {
-                this.batchCount = i.target.value
-                const element = document.getElementById(
-                  'batchCountInputNumber'
-                ) as HTMLInputElement
-                element.value = i.target.value
-              }
-            }),
-            $el('input', {
-              id: 'autoQueueCheckbox',
-              type: 'checkbox',
-              checked: false,
-              title: 'automatically queue runner when the queue size hits 0'
-            })
-          ])
-        ]
-      )
-    ])
-
-    this.settings.addSetting({
-      id: 'Comfy.MenuPosition',
-      name: 'Save menu position',
-      type: 'boolean',
-      defaultValue: true
-    })
-
-    // 启用菜单拖拽功能
-    dragElement(this.menuContainer, this.settings)
-
-    this.setStatus({ exec_info: { queue_remaining: 'X' } })
-  }
-
-  setStatus(status) {
-    this.queueSize.textContent =
-      'Queue size: ' + (status ? status.exec_info.queue_remaining : 'ERR')
-    if (status) {
-      if (
-        this.lastQueueSize != 0 &&
-        status.exec_info.queue_remaining == 0 &&
-        (document.getElementById('autoQueueCheckbox') as HTMLInputElement)
-          .checked
-      ) {
-        this.app.stateHandler.queueRunner(0, this.batchCount)
-      }
-      this.lastQueueSize = status.exec_info.queue_remaining
-    }
-  }
-}
-
-/**
- * Represents a list of items with a custom remove action and load action.
- */
-class ComfyList {
-  #type: string // The type of the list.
-  #text: string // The text to display in the list.
-  element: CustomElement // The list element.
-  button: HTMLButtonElement
-  app: ComfyCenter
-
-  /**
-   * Creates a new ComfyList instance.
-   * @param {string} text - The text to display in the list.
-   * @param {string} [type] - The type of the list. Defaults to the lowercase version of the text.
-   */
-  constructor(text: string, app: ComfyCenter, type?: string) {
-    this.#text = text
-    this.#type = type || text.toLowerCase()
-    this.element = $el('div.comfy-list')
-    this.element.style.display = 'none'
-    this.app = app
-  }
-
-  /**
-   * Gets whether the list is currently visible.
-   * @returns {boolean} - True if the list is visible, false otherwise.
-   */
-  get visible(): boolean {
-    return this.element.style.display !== 'none'
-  }
-
-  /**
-   * Loads the items in the list from the API.
-   */
-  async load() {
-    const items = await api.getItems(this.#type)
-    this.element.replaceChildren(
-      ...Object.keys(items).flatMap(
-        (section) =>
-          [
-            $el('h4', {
-              textContent: section
-            }),
-            $el('div.comfy-list-items', [
-              ...items[section].map((item) => {
-                // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
-                const removeAction = item.remove || {
-                  name: 'Delete',
-                  cb: () => api.deleteItem(this.#type, item.prompt[1])
-                }
-                return $el('div', { textContent: item.prompt[0] + ': ' }, [
-                  $el('button', {
-                    textContent: 'Load',
-                    onclick: () => {
-                      this.app.workflowManager.loadGraphData(
-                        item.prompt[3].extra_pnginfo.workflow
-                      )
-                      if (item.outputs) {
-                        this.app.stateHandler.nodeOutputs = item.outputs
-                      }
-                    }
-                  }),
-                  $el('button', {
-                    textContent: removeAction.name,
-                    onclick: async () => {
-                      await removeAction.cb()
-                      await this.update()
-                    }
-                  })
-                ])
-              })
-            ])
-          ] as Node[]
-      ),
-      $el('div.comfy-list-actions', [
-        $el('button', {
-          textContent: 'Clear ' + this.#text,
-          onclick: async () => {
-            await api.clearItems(this.#type)
-            await this.load()
-          }
-        }),
-        $el('button', { textContent: 'Refresh', onclick: () => this.load() })
-      ]) as Node
-    )
-  }
-
-  /**
-   * Updates the list if it is currently visible.
-   */
-  async update() {
-    if (this.visible) {
-      await this.load()
-    }
-  }
-
-  /**
-   * Shows the list.
-   */
-  async show() {
-    this.element.style.display = 'block'
-    this.button.textContent = 'Close'
-
-    await this.load()
-  }
-
-  /**
-   * Hides the list.
-   */
-  hide() {
-    this.element.style.display = 'none'
-    this.button.textContent = 'View ' + this.#text
-  }
-
-  /**
-   * Toggles the visibility of the list.
-   * @returns {boolean} - True if the list is now visible, false otherwise.
-   */
-  toggle(): boolean {
-    if (this.visible) {
-      this.hide()
-      return false
-    } else {
-      this.show()
-      return true
-    }
   }
 }

@@ -1,4 +1,4 @@
-import { ComfyUI, $el } from '../canvas-manager/ui.js'
+import { $el } from '../canvas-manager/tools.js'
 import { EventManager } from '../eventManager.js'
 import { defaultGraph } from './defaultGraph.js'
 import { CanvasManager } from '../canvas-manager/index.js'
@@ -14,11 +14,13 @@ export class WorkflowManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
-  setup(config: ComfyCenter) {
+  init(config: ComfyCenter) {
     this.canvasManager = config.canvasManager
     this.logging = config.logger
     this.stateHandler = config.stateHandler
+  }
 
+  setup() {
     // Load previous workflow
     let restored = false
     try {

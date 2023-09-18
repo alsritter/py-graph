@@ -1,7 +1,6 @@
 import { api } from '../api.js'
 import { CanvasManager } from '../canvas-manager/index.js'
 import { StateHandler } from '../state-handler/index.js'
-import { ProgressManager } from '../progress-manager/index.js'
 import { EventManager } from '../eventManager.js'
 import { ComfyWidgets } from '../canvas-manager/widgets.js'
 
@@ -26,31 +25,22 @@ export class NodeManager implements Module {
    */
   stateHandler: StateHandler
 
-  /**
-   * The progress manager instance
-   */
-  progressManager: ProgressManager
-
   constructor(private eventManager: EventManager) {}
 
-  async setup(config: ComfyCenter) {
+  init(config: ComfyCenter) {
     this.canvasManager = config.canvasManager
     this.stateHandler = config.stateHandler
-    await this.registerNodes(config)
   }
 
-  /**
-   * Registers nodes with the graph
-   */
-  async registerNodes(config: ComfyCenter) {
-    const app = this
+  async setup() {
     // Load node definitions from the backend
     const defs = await api.getNodeDefs()
-    await this.registerNodesFromDefs(config, defs)
+    await this.registerNodesFromDefs(defs)
+    this.#addDrawNodeHandler()
     await this.eventManager.invokeExtensions('registerCustomNodes')
   }
 
-  async registerNodesFromDefs(config: ComfyCenter, defs: { [x: string]: any }) {
+  async registerNodesFromDefs(defs: { [x: string]: any }) {
     await this.eventManager.invokeExtensions('addCustomNodeDefs', defs)
 
     // Generate list of known widgets
@@ -512,7 +502,7 @@ export class NodeManager implements Module {
       }
 
       if (
-        self.progressManager.progress &&
+        self.stateHandler.progress &&
         node.id === +self.stateHandler.runningNodeId
       ) {
         ctx.fillStyle = 'green'
@@ -520,8 +510,7 @@ export class NodeManager implements Module {
           0,
           0,
           size[0] *
-            (self.progressManager.progress.value /
-              self.progressManager.progress.max),
+            (self.stateHandler.progress.value / self.stateHandler.progress.max),
           6
         )
         ctx.fillStyle = bgcolor
