@@ -5,6 +5,7 @@
     "outDir": "./built",             // 编译输出目录
     "rootDir": ".",             // TypeScript 源代码目录
     "esModuleInterop": true,         // 启用 esModuleInterop 以支持 CommonJS 模块
+    "sourceMap": true,               // 生成相应的 .map 文件
     "skipLibCheck": true,            // 跳过对声明文件的检查
     "forceConsistentCasingInFileNames": true,  // 强制一致的文件名大小写
     "removeComments": true,          // 删除编译后的输出中的注释

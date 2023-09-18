@@ -22,7 +22,7 @@ export class EventManager {
     const eventListeners = this.listeners[eventName]
     if (eventListeners) {
       eventListeners.forEach((listener) => {
-        listener(...args)
+        listener(eventName, ...args)
       })
     }
   }
@@ -31,7 +31,7 @@ export class EventManager {
     const eventListeners = this.listeners[eventName]
     if (eventListeners) {
       const promises = eventListeners.map((listener) =>
-        Promise.resolve(listener(...args))
+        Promise.resolve(listener(eventName, ...args))
       )
       return await Promise.all(promises)
     }

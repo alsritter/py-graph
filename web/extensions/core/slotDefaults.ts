@@ -30,7 +30,7 @@ const extensionObj: ComfyExtension = {
   async beforeRegisterNodeDef(
     nodeType,
     nodeData: ComfyObjectInfo,
-    app: ComfyApp
+    app: ComfyCenter
   ) {
     var nodeId = nodeData.name
     const inputs = nodeData.input?.required //only show required inputs to reduce the mess also not logical to create node with optional inputs

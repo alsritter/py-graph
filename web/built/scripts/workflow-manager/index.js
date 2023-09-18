@@ -276,3 +276,4 @@ _WorkflowManager_instances = new WeakSet(), _WorkflowManager_addDropHandler = fu
         this.nodeManager.dragOverNode = null;
     }, false);
 };
+//# sourceMappingURL=index.js.map

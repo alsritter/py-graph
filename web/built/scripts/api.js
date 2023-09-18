@@ -271,3 +271,4 @@ _ComfyApi_registered = new WeakMap(), _ComfyApi_instances = new WeakSet(), _Comf
     });
 };
 export const api = new ComfyApi();
+//# sourceMappingURL=api.js.map

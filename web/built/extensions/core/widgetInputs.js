@@ -376,3 +376,4 @@ app.registerExtension({
         }));
     }
 });
+//# sourceMappingURL=widgetInputs.js.map

@@ -13,10 +13,8 @@ export class ExtensionsManager {
         this.eventManager = eventManager;
     }
     init(config) {
-        this.extensions = [];
-    }
-    setup() {
         return __awaiter(this, void 0, void 0, function* () {
+            this.extensions = [];
             const extensions = yield api.getExtensions();
             for (const ext of extensions) {
                 try {
@@ -28,6 +26,9 @@ export class ExtensionsManager {
             }
             this.listenAndForwardEvents();
         });
+    }
+    setup() {
+        return __awaiter(this, void 0, void 0, function* () { });
     }
     listenAndForwardEvents() {
         const events = [
@@ -43,9 +44,10 @@ export class ExtensionsManager {
         for (const key of events) {
             this.eventManager.addEventListener(key, (method, ...args) => __awaiter(this, void 0, void 0, function* () {
                 return yield Promise.all(this.extensions.map((ext) => __awaiter(this, void 0, void 0, function* () {
+                    console.log(`Calling extension '${ext.name}' method '${key}'`);
                     if (method in ext) {
                         try {
-                            return yield ext[method](...args, this);
+                            return yield ext[key](...args, this);
                         }
                         catch (error) {
                             console.error(`Error calling extension '${ext.name}' method '${method}'`, { error }, { extension: ext }, { args });
@@ -65,3 +67,4 @@ export class ExtensionsManager {
         this.extensions.push(extension);
     }
 }
+//# sourceMappingURL=index.js.map

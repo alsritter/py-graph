@@ -140,3 +140,4 @@ _StateHandler_queueItems = new WeakMap(), _StateHandler_processingQueue = new We
     });
     api.init();
 };
+//# sourceMappingURL=index.js.map

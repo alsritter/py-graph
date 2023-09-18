@@ -529,3 +529,4 @@ export class ComfySettingsDialog extends ComfyDialog {
         this.element.showModal();
     }
 }
+//# sourceMappingURL=ui.js.map

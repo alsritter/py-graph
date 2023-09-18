@@ -410,3 +410,4 @@ export const ComfyWidgets = {
         return { widget: uploadWidget };
     }
 };
+//# sourceMappingURL=widgets.js.map

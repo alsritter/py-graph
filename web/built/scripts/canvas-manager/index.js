@@ -51,3 +51,4 @@ export class CanvasManager {
             return '';
     }
 }
+//# sourceMappingURL=index.js.map

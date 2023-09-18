@@ -343,3 +343,4 @@ class ComfyLoggingDialog extends ComfyDialog {
         super.show($el('div', els));
     }
 }
+//# sourceMappingURL=index.js.map

@@ -11,14 +11,8 @@ export class ExtensionsManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
-  init(config: ComfyCenter) {
+  async init(config: ComfyCenter) {
     this.extensions = []
-  }
-
-  /**
-   * 从 API URL 加载扩展
-   */
-  async setup() {
     const extensions = await api.getExtensions()
     for (const ext of extensions) {
       try {
@@ -27,9 +21,13 @@ export class ExtensionsManager implements Module {
         console.error('Error loading extension', ext, error)
       }
     }
-
     this.listenAndForwardEvents()
   }
+
+  /**
+   * 从 API URL 加载扩展
+   */
+  async setup() {}
 
   /**
    * 监听全部事件并转发给 invokeExtensionsAsync 函数调用
@@ -47,14 +45,15 @@ export class ExtensionsManager implements Module {
     ]
 
     for (const key of events) {
-      this.eventManager.addEventListener(key, async (method, ...args) => {
+      this.eventManager.addEventListener(key, async (method: string, ...args: any[]) => {
         // 这里传入的是一个自定义插件的不同执行阶段的函数名称
         // 具体参考 logging.js.example 文件的说明
         return await Promise.all(
           this.extensions.map(async (ext) => {
+            console.log(`Calling extension '${ext.name}' method '${key}'`)
             if (method in ext) {
               try {
-                return await ext[method](...args, this)
+                return await ext[key](...args, this)
               } catch (error) {
                 console.error(
                   `Error calling extension '${ext.name}' method '${method}'`,

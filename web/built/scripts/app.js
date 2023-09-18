@@ -55,3 +55,4 @@ export class ComfyApp {
     }
 }
 export const app = new ComfyApp();
+//# sourceMappingURL=app.js.map

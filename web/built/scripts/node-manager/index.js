@@ -400,3 +400,4 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
         return res;
     };
 };
+//# sourceMappingURL=index.js.map

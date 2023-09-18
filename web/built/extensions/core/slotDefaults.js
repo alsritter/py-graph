@@ -90,3 +90,4 @@ const extensionObj = {
     }
 };
 app.registerExtension(extensionObj);
+//# sourceMappingURL=slotDefaults.js.map

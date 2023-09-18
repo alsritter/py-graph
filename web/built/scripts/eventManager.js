@@ -30,7 +30,7 @@ export class EventManager {
         const eventListeners = this.listeners[eventName];
         if (eventListeners) {
             eventListeners.forEach((listener) => {
-                listener(...args);
+                listener(eventName, ...args);
             });
         }
     }
@@ -38,10 +38,11 @@ export class EventManager {
         return __awaiter(this, void 0, void 0, function* () {
             const eventListeners = this.listeners[eventName];
             if (eventListeners) {
-                const promises = eventListeners.map((listener) => Promise.resolve(listener(...args)));
+                const promises = eventListeners.map((listener) => Promise.resolve(listener(eventName, ...args)));
                 return yield Promise.all(promises);
             }
             return [];
         });
     }
 }
+//# sourceMappingURL=eventManager.js.map
