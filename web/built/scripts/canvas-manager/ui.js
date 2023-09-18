@@ -105,12 +105,6 @@ export class ComfyUI {
                 ])
             ])
         ]);
-        this.settings.addSetting({
-            id: 'Comfy.MenuPosition',
-            name: 'Save menu position',
-            type: 'boolean',
-            defaultValue: true
-        });
         this.dragElement(this.menuContainer, this.settings);
         this.setStatus({ exec_info: { queue_remaining: 'X' } });
     }
@@ -399,12 +393,10 @@ export class ComfySettingsDialog extends ComfyDialog {
                 value = this.getSettingValue(id, defaultValue);
                 let element;
                 const htmlID = id.replaceAll('.', '-');
-                const list = new DOMTokenList();
-                list.add(tooltip !== '' ? 'comfy-tooltip-indicator' : '');
                 const labelCell = $el('td', [
                     $el('label', {
                         for: htmlID,
-                        classList: list,
+                        classList: [tooltip !== '' ? 'comfy-tooltip-indicator' : ''],
                         textContent: name
                     })
                 ]);

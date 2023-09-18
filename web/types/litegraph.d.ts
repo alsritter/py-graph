@@ -1288,6 +1288,11 @@ export declare global {
     always_render_background: boolean
     autoresize?: boolean
     background_image: string
+
+    default_connection_color_byType: {
+      [type: string]: string
+    }
+
     bgcanvas: HTMLCanvasElement
     bgctx: CanvasRenderingContext2D
     canvas: HTMLCanvasElement
@@ -1607,6 +1612,8 @@ export declare global {
     getExtraMenuOptions?(): ContextMenuItem[]
     /** Called when mouse right click */
     processContextMenu(node: LGraphNode, event: Event): void
+    /** update background image */
+    updateBackground(imageStr: string, clearBackgroundColor: string): void
   }
 
   declare class ContextMenu {

@@ -101,7 +101,7 @@ declare global {
     addCustomNodeDefs?(
       defs: Record<string, ComfyObjectInfo>,
       app: ComfyApp
-    ): Promise<void>
+    ): Promise<void> | void
     /**
      * Allows the extension to add custom widgets
      * @param app The ComfyUI app instance
