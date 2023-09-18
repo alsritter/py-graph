@@ -8,8 +8,9 @@ export declare class NodeManager implements Module {
     dragOverNode: LGraphNode;
     canvasManager: CanvasManager;
     stateHandler: StateHandler;
+    center: ComfyCenter;
     constructor(eventManager: EventManager);
-    init(config: ComfyCenter): void;
+    init(center: ComfyCenter): void;
     setup(): Promise<void>;
     registerNodesFromDefs(defs: {
         [x: string]: any;

@@ -25,11 +25,17 @@ export class NodeManager implements Module {
    */
   stateHandler: StateHandler
 
+  /**
+   * The all modals center
+   */
+  center: ComfyCenter
+
   constructor(private eventManager: EventManager) {}
 
-  init(config: ComfyCenter) {
-    this.canvasManager = config.canvasManager
-    this.stateHandler = config.stateHandler
+  init(center: ComfyCenter) {
+    this.center = center
+    this.canvasManager = center.canvasManager
+    this.stateHandler = center.stateHandler
   }
 
   async setup() {
@@ -50,7 +56,7 @@ export class NodeManager implements Module {
       ...(await this.eventManager.invokeExtensions('getCustomWidgets')).filter(
         Boolean
       )
-    )
+    ) as typeof ComfyWidgets
 
     const that = this
     console.log('Registering nodes', defs)
@@ -74,7 +80,6 @@ export class NodeManager implements Module {
             const inputData = inputs[inputName]
             const type = inputData[0]
 
-            console.log('Adding input', inputName, type, inputData)
             if (inputData[1]?.forceInput) {
               this.addInput(inputName, type)
             } else {
@@ -82,7 +87,7 @@ export class NodeManager implements Module {
                 // Enums
                 Object.assign(
                   config,
-                  widgets.COMBO(this, inputName, inputData, that) || {}
+                  widgets.COMBO(this, inputName, inputData, that.center) || {}
                 )
               } else if (`${type}:${inputName}` in widgets) {
                 // Support custom widgets by Type:Name
@@ -92,14 +97,14 @@ export class NodeManager implements Module {
                     this,
                     inputName,
                     inputData,
-                    that
+                    that.center
                   ) || {}
                 )
               } else if (type in widgets) {
                 // Standard type widgets
                 Object.assign(
                   config,
-                  widgets[type](this, inputName, inputData, that) || {}
+                  widgets[type](this, inputName, inputData, that.center) || {}
                 )
               } else {
                 // Node connection inputs

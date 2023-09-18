@@ -20,9 +20,10 @@ export class NodeManager {
         _NodeManager_instances.add(this);
         this.eventManager = eventManager;
     }
-    init(config) {
-        this.canvasManager = config.canvasManager;
-        this.stateHandler = config.stateHandler;
+    init(center) {
+        this.center = center;
+        this.canvasManager = center.canvasManager;
+        this.stateHandler = center.stateHandler;
     }
     setup() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -50,19 +51,18 @@ export class NodeManager {
                     for (const inputName in inputs) {
                         const inputData = inputs[inputName];
                         const type = inputData[0];
-                        console.log('Adding input', inputName, type, inputData);
                         if ((_a = inputData[1]) === null || _a === void 0 ? void 0 : _a.forceInput) {
                             this.addInput(inputName, type);
                         }
                         else {
                             if (Array.isArray(type)) {
-                                Object.assign(config, widgets.COMBO(this, inputName, inputData, that) || {});
+                                Object.assign(config, widgets.COMBO(this, inputName, inputData, that.center) || {});
                             }
                             else if (`${type}:${inputName}` in widgets) {
-                                Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, that) || {});
+                                Object.assign(config, widgets[`${type}:${inputName}`](this, inputName, inputData, that.center) || {});
                             }
                             else if (type in widgets) {
-                                Object.assign(config, widgets[type](this, inputName, inputData, that) || {});
+                                Object.assign(config, widgets[type](this, inputName, inputData, that.center) || {});
                             }
                             else {
                                 this.addInput(inputName, type);
