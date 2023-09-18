@@ -60,7 +60,7 @@ export class ComfyApp {
       await module.setup()
     }
 
-    await eventManager.invokeExtensions('setup')
+    await eventManager.invokeExtensions('setup', this)
   }
 
   registerExtension(extension: ComfyExtension) {

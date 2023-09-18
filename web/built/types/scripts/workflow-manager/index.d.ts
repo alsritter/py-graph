@@ -6,8 +6,9 @@ export declare class WorkflowManager implements Module {
     private logging;
     private stateHandler;
     private nodeManager;
+    center: ComfyCenter;
     constructor(eventManager: EventManager);
-    init(config: ComfyCenter): void;
+    init(center: ComfyCenter): void;
     setup(): void;
     loadGraphData(graphData: any): Promise<void>;
     graphToRunner(): Promise<{

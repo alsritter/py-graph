@@ -47,7 +47,7 @@ export class ComfyApp {
                 console.log(`Starting module ${module.constructor.name}`);
                 yield module.setup();
             }
-            yield eventManager.invokeExtensions('setup');
+            yield eventManager.invokeExtensions('setup', this);
         });
     }
     registerExtension(extension) {

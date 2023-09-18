@@ -5,6 +5,8 @@ import { ComfyUI } from './ui.js'
  * 负责创建 LGraph 画布、调整窗口大小以及基础画布设置。
  */
 export class CanvasManager implements Module {
+  center: ComfyCenter
+
   /**
    * User interface (UI) instance for the app
    */
@@ -32,7 +34,7 @@ export class CanvasManager implements Module {
 
   constructor(private eventManager: EventManager) {}
 
-  init(config: ComfyCenter) {
+  init(center: ComfyCenter) {
     const mainCanvas = document.createElement('canvas')
     mainCanvas.style.touchAction = 'none'
     const canvasEl = (this.canvasEl = Object.assign(mainCanvas, {
@@ -64,11 +66,12 @@ export class CanvasManager implements Module {
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
 
-    this.ui = new ComfyUI(config)
+    this.center = center
+    this.ui = new ComfyUI(center)
   }
 
   async setup() {
-    await this.eventManager.invokeExtensions('init')
+    await this.eventManager.invokeExtensions('init', this.center)
   }
 
   getPreviewFormatParam() {

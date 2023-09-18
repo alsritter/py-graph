@@ -12,12 +12,15 @@ export class WorkflowManager implements Module {
   private stateHandler: StateHandler
   private nodeManager: NodeManager
 
+  center: ComfyCenter
+
   constructor(private eventManager: EventManager) {}
 
-  init(config: ComfyCenter) {
-    this.canvasManager = config.canvasManager
-    this.logging = config.logger
-    this.stateHandler = config.stateHandler
+  init(center: ComfyCenter) {
+    this.canvasManager = center.canvasManager
+    this.logging = center.logger
+    this.stateHandler = center.stateHandler
+    this.center = center
   }
 
   setup() {
@@ -148,7 +151,7 @@ export class WorkflowManager implements Module {
         }
       }
 
-      await this.eventManager.invokeExtensions('loadedGraphNode', node)
+      await this.eventManager.invokeExtensions('loadedGraphNode', node, this.center)
     }
 
     if (missingNodeTypes.length) {

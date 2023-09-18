@@ -3,7 +3,7 @@ import {
   addValueControlWidget
 } from '../../scripts/canvas-manager/widgets.js'
 import { app } from '../../scripts/app.js'
-
+import type { ComfyApp } from '../../scripts/app.js'
 const CONVERTED_TYPE = 'converted-widget'
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN']
 
@@ -120,7 +120,7 @@ app.registerExtension({
    * @param app - 应用程序对象。
    * @returns - 异步操作的 Promise 对象。
    */
-  async beforeRegisterNodeDef(nodeType, nodeData, app: ComfyCenter) {
+  async beforeRegisterNodeDef(nodeType, nodeData, app: ComfyApp) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
     const nodeTypePrototype = nodeType.prototype

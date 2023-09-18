@@ -6,6 +6,7 @@ import { ComfyWidgets } from '../../scripts/canvas-manager/widgets.js'
 const extensionObj: ComfyExtension = {
   name: 'Comfy.SlotDefaults',
   suggestionsNumber: null,
+
   init(app: ComfyApp) {
     LiteGraph.search_filter_enabled = true
     LiteGraph.middle_click_slot_add_default_node = true

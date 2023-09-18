@@ -20,10 +20,11 @@ export class WorkflowManager {
         _WorkflowManager_instances.add(this);
         this.eventManager = eventManager;
     }
-    init(config) {
-        this.canvasManager = config.canvasManager;
-        this.logging = config.logger;
-        this.stateHandler = config.stateHandler;
+    init(center) {
+        this.canvasManager = center.canvasManager;
+        this.logging = center.logger;
+        this.stateHandler = center.stateHandler;
+        this.center = center;
     }
     setup() {
         let restored = false;
@@ -117,7 +118,7 @@ export class WorkflowManager {
                         }
                     }
                 }
-                yield this.eventManager.invokeExtensions('loadedGraphNode', node);
+                yield this.eventManager.invokeExtensions('loadedGraphNode', node, this.center);
             }
             if (missingNodeTypes.length) {
                 this.canvasManager.ui.dialog.show(`When loading the graph, the following node types were not found: <ul>${Array.from(new Set(missingNodeTypes))

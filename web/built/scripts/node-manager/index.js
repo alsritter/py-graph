@@ -30,13 +30,13 @@ export class NodeManager {
             const defs = yield api.getNodeDefs();
             yield this.registerNodesFromDefs(defs);
             __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addDrawNodeHandler).call(this);
-            yield this.eventManager.invokeExtensions('registerCustomNodes');
+            yield this.eventManager.invokeExtensions('registerCustomNodes', this.center);
         });
     }
     registerNodesFromDefs(defs) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.eventManager.invokeExtensions('addCustomNodeDefs', defs);
-            const widgets = Object.assign({}, ComfyWidgets, ...(yield this.eventManager.invokeExtensions('getCustomWidgets')).filter(Boolean));
+            yield this.eventManager.invokeExtensions('addCustomNodeDefs', defs, this.center);
+            const widgets = Object.assign({}, ComfyWidgets, ...(yield this.eventManager.invokeExtensions('getCustomWidgets', this.center)).filter(Boolean));
             const that = this;
             console.log('Registering nodes', defs);
             for (const nodeId in defs) {
@@ -82,7 +82,7 @@ export class NodeManager {
                     s[1] = Math.max(config.minHeight, s[1]);
                     this.size = s;
                     this.serialize_widgets = true;
-                    that.eventManager.invokeExtensions('nodeCreated', this);
+                    that.eventManager.invokeExtensions('nodeCreated', this, this.center);
                 }, {
                     title: nodeData.display_name || nodeData.name,
                     comfyClass: nodeData.name,
@@ -90,7 +90,7 @@ export class NodeManager {
                 });
                 node.prototype.comfyClass = nodeData.name;
                 __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addDrawBackgroundHandler).call(this, node);
-                yield this.eventManager.invokeExtensions('beforeRegisterNodeDef', node, nodeData);
+                yield this.eventManager.invokeExtensions('beforeRegisterNodeDef', node, nodeData, this.center);
                 LiteGraph.registerNodeType(nodeId, node);
                 node.category = nodeData.category;
             }

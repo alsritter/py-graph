@@ -43,19 +43,26 @@ export class NodeManager implements Module {
     const defs = await api.getNodeDefs()
     await this.registerNodesFromDefs(defs)
     this.#addDrawNodeHandler()
-    await this.eventManager.invokeExtensions('registerCustomNodes')
+    await this.eventManager.invokeExtensions('registerCustomNodes', this.center)
   }
 
   async registerNodesFromDefs(defs: { [x: string]: any }) {
-    await this.eventManager.invokeExtensions('addCustomNodeDefs', defs)
+    await this.eventManager.invokeExtensions(
+      'addCustomNodeDefs',
+      defs,
+      this.center
+    )
 
     // Generate list of known widgets
     const widgets = Object.assign(
       {},
       ComfyWidgets,
-      ...(await this.eventManager.invokeExtensions('getCustomWidgets')).filter(
-        Boolean
-      )
+      ...(
+        await this.eventManager.invokeExtensions(
+          'getCustomWidgets',
+          this.center
+        )
+      ).filter(Boolean)
     ) as typeof ComfyWidgets
 
     const that = this
@@ -128,7 +135,7 @@ export class NodeManager implements Module {
           this.size = s
           this.serialize_widgets = true
 
-          that.eventManager.invokeExtensions('nodeCreated', this)
+          that.eventManager.invokeExtensions('nodeCreated', this, this.center)
         },
         {
           title: nodeData.display_name || nodeData.name,
@@ -144,7 +151,8 @@ export class NodeManager implements Module {
       await this.eventManager.invokeExtensions(
         'beforeRegisterNodeDef',
         node,
-        nodeData
+        nodeData,
+        this.center
       )
       LiteGraph.registerNodeType(nodeId, node)
 

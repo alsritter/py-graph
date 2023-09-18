@@ -12,7 +12,7 @@ export class CanvasManager {
     constructor(eventManager) {
         this.eventManager = eventManager;
     }
-    init(config) {
+    init(center) {
         const mainCanvas = document.createElement('canvas');
         mainCanvas.style.touchAction = 'none';
         const canvasEl = (this.canvasEl = Object.assign(mainCanvas, {
@@ -36,11 +36,12 @@ export class CanvasManager {
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
-        this.ui = new ComfyUI(config);
+        this.center = center;
+        this.ui = new ComfyUI(center);
     }
     setup() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.eventManager.invokeExtensions('init');
+            yield this.eventManager.invokeExtensions('init', this.center);
         });
     }
     getPreviewFormatParam() {
