@@ -2,6 +2,7 @@
 // Project: litegraph.js
 // Definitions by: NateScarlet <https://github.com/NateScarlet>
 export declare global {
+  type LMouseEvent = MouseEvent & { canvasX: number; canvasY: number }
   type Vector2 = [number, number]
   type Vector4 = [number, number, number, number]
   type widgetTypes =
@@ -56,7 +57,7 @@ export declare global {
     graphCanvas?: LGraphCanvas,
     node?: LGraphNode,
     pos?: Vector2,
-    event?: MouseEvent
+    event?: LMouseEvent
   ) => void
 
   interface IWidget<TValue = any, TOptions = any> {
@@ -99,7 +100,7 @@ export declare global {
      * Called by `LGraphCanvas.processNodeWidgets`
      * https://github.com/jagenjo/litegraph.js/issues/76
      */
-    mouse?(event: MouseEvent, pos: Vector2, node: LGraphNode): boolean
+    mouse?(event: LMouseEvent, pos: Vector2, node: LGraphNode): boolean
     /** Called by `LGraphNode.computeSize` */
     computeSize?(width?: number): [number, number]
 
@@ -162,7 +163,7 @@ export declare global {
   interface IContextMenuOptions {
     callback?: ContextMenuEventListener
     ignore_item_callbacks?: Boolean
-    event?: MouseEvent | CustomEvent
+    event?: LMouseEvent | CustomEvent
     parentMenu?: ContextMenu
     autoopen?: boolean
     title?: string
@@ -173,7 +174,7 @@ export declare global {
   type ContextMenuEventListener = (
     value: ContextMenuItem,
     options: IContextMenuOptions,
-    event: MouseEvent,
+    event: LMouseEvent,
     parentMenu: ContextMenu | undefined,
     node: LGraphNode
   ) => boolean | void
@@ -240,6 +241,7 @@ export declare global {
     NO_TITLE: number
     TRANSPARENT_TITLE: number
     AUTOHIDE_TITLE: number
+    DEFAULT_GROUP_FONT_SIZE: number
     VERTICAL_LAYOUT: string
     proxy: any
     node_images_path: string
@@ -1004,23 +1006,27 @@ export declare global {
 
     // https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#custom-node-behaviour
     onMouseDown?(
-      event: MouseEvent,
+      event: LMouseEvent,
       pos: Vector2,
       graphCanvas: LGraphCanvas
     ): void
     onMouseMove?(
-      event: MouseEvent,
+      event: LMouseEvent,
       pos: Vector2,
       graphCanvas: LGraphCanvas
     ): void
-    onMouseUp?(event: MouseEvent, pos: Vector2, graphCanvas: LGraphCanvas): void
+    onMouseUp?(
+      event: LMouseEvent,
+      pos: Vector2,
+      graphCanvas: LGraphCanvas
+    ): void
     onMouseEnter?(
-      event: MouseEvent,
+      event: LMouseEvent,
       pos: Vector2,
       graphCanvas: LGraphCanvas
     ): void
     onMouseLeave?(
-      event: MouseEvent,
+      event: LMouseEvent,
       pos: Vector2,
       graphCanvas: LGraphCanvas
     ): void
@@ -1202,7 +1208,7 @@ export declare global {
     visible_area: Vector4
     bindEvents(element: HTMLElement): void
     computeVisibleArea(): void
-    onMouse(e: MouseEvent): void
+    onMouse(e: LMouseEvent): void
     toCanvasContext(ctx: CanvasRenderingContext2D): void
     convertOffsetToCanvas(pos: Vector2): Vector2
     convertCanvasToOffset(pos: Vector2): Vector2
@@ -1356,7 +1362,7 @@ export declare global {
       | null
     onDrawOverlay: ((ctx: CanvasRenderingContext2D) => void) | null
     /** Called by `LGraphCanvas.processMouseDown` */
-    onMouse: ((event: MouseEvent) => boolean) | null
+    onMouse: ((event: LMouseEvent) => boolean) | null
     /** Called by `LGraphCanvas.drawFrontCanvas` and `LGraphCanvas.drawLinkTooltip` */
     onDrawLinkTooltip:
       | ((ctx: CanvasRenderingContext2D, link: LLink, _this: this) => void)
@@ -1382,7 +1388,7 @@ export declare global {
         ) => string[])
       | null
     onSearchBoxSelection:
-      | ((name: string, event: MouseEvent, graphCanvas: LGraphCanvas) => void)
+      | ((name: string, event: LMouseEvent, graphCanvas: LGraphCanvas) => void)
       | null
     pause_rendering: boolean
     render_canvas_border: boolean
@@ -1446,10 +1452,10 @@ export declare global {
     /** stops rendering the content of the canvas (to save resources) */
     stopRendering(): void
 
-    processMouseDown(e: MouseEvent): boolean | undefined
-    processMouseMove(e: MouseEvent): boolean | undefined
-    processMouseUp(e: MouseEvent): boolean | undefined
-    processMouseWheel(e: MouseEvent): boolean | undefined
+    processMouseDown(e: LMouseEvent): boolean | undefined
+    processMouseMove(e: LMouseEvent): boolean | undefined
+    processMouseUp(e: LMouseEvent): boolean | undefined
+    processMouseWheel(e: LMouseEvent): boolean | undefined
 
     /** returns true if a position (in graph space) is on top of a node little corner box */
     isOverNodeBox(node: LGraphNode, canvasX: number, canvasY: number): boolean
@@ -1469,7 +1475,7 @@ export declare global {
     processDrop(e: DragEvent): void
     checkDropItem(e: DragEvent): void
     processNodeDblClicked(n: LGraphNode): void
-    processNodeSelected(n: LGraphNode, e: MouseEvent): void
+    processNodeSelected(n: LGraphNode, e: LMouseEvent): void
     processNodeDeselected(node: LGraphNode): void
 
     /** selects a given node (or adds it to the current selection) */
@@ -1589,19 +1595,19 @@ export declare global {
       callback: Function,
       event: any
     ): HTMLDivElement
-    showSearchBox(event?: MouseEvent): void
+    showSearchBox(event?: LMouseEvent): void
     showEditPropertyValue(node: LGraphNode, property: any, options: any): void
     createDialog(
       html: string,
-      options?: { position?: Vector2; event?: MouseEvent }
+      options?: { position?: Vector2; event?: LMouseEvent }
     ): void
 
     convertOffsetToCanvas: DragAndScale['convertOffsetToCanvas']
     convertCanvasToOffset: DragAndScale['convertCanvasToOffset']
     /** converts event coordinates from canvas2D to graph coordinates */
-    convertEventToCanvasOffset(e: MouseEvent): Vector2
+    convertEventToCanvasOffset(e: LMouseEvent): Vector2
     /** adds some useful properties to a mouse event, like the position in graph coordinates */
-    adjustMouseEvent(e: MouseEvent): void
+    adjustLMouseEvent(e: LMouseEvent): void
 
     getCanvasMenuOptions(): ContextMenuItem[]
     getNodeMenuOptions(node: LGraphNode): ContextMenuItem[]
@@ -1623,7 +1629,7 @@ export declare global {
       params: any,
       origin: any
     ): void
-    static isCursorOverElement(event: MouseEvent, element: HTMLElement): void
+    static isCursorOverElement(event: LMouseEvent, element: HTMLElement): void
     static closeAllContextMenus(window: Window): void
     constructor(
       values: ContextMenuItem[],
@@ -1639,7 +1645,7 @@ export declare global {
       value: ContextMenuItem,
       options?: IContextMenuOptions
     ): void
-    close(e?: MouseEvent, ignore_parent_menu?: boolean): void
+    close(e?: LMouseEvent, ignore_parent_menu?: boolean): void
     getTopMenu(): void
     getFirstEvent(): void
   }

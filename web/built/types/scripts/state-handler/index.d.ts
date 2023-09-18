@@ -12,6 +12,7 @@ export declare class StateHandler implements Module {
     nodeOutputs: Record<string, any>;
     lastExecutionError: any;
     runningNodeId: any;
+    shiftDown: boolean;
     init(config: ComfyCenter): void;
     setup(): void;
     queueRunner(number: any, batchCount?: number): Promise<void>;

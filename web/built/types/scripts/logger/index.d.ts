@@ -41,7 +41,7 @@ declare class ComfyLoggingDialog extends ComfyDialog {
     export(): void;
     import(): void;
     createButtons(): CustomElement[];
-    getTypeColor(type: any): "dodgerblue" | "red" | "orange";
+    getTypeColor(type: any): "red" | "orange" | "dodgerblue";
     show(entries?: any): void;
 }
 export {};

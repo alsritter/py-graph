@@ -25,6 +25,7 @@ export class StateHandler {
         _StateHandler_instances.add(this);
         _StateHandler_queueItems.set(this, []);
         _StateHandler_processingQueue.set(this, false);
+        this.shiftDown = false;
     }
     init(config) {
         this.workflowManager = config.workflowManager;

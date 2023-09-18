@@ -1,6 +1,5 @@
 import { api } from '../api.js'
 import { $el } from './tools.js'
-import type { CanvasManager } from './index.js'
 
 export class ComfyUI {
   menuContainer: CustomElement

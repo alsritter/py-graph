@@ -47,6 +47,11 @@ export class StateHandler implements Module {
    */
   runningNodeId: any
 
+  /**
+   * If the shift key on the keyboard is pressed
+   */
+  shiftDown: boolean = false
+
   init(config: ComfyCenter) {
     this.workflowManager = config.workflowManager
     this.canvasManager = config.canvasManager
