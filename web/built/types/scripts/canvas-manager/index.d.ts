@@ -1,4 +1,4 @@
-import { EventManager } from '../eventManager.js';
+import { EventManager } from '../event.js';
 import { ComfyUI } from './ui.js';
 export declare class CanvasManager implements Module {
     private eventManager;

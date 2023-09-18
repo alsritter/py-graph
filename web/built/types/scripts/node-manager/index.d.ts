@@ -1,6 +1,6 @@
 import { CanvasManager } from '../canvas-manager/index.js';
 import { StateHandler } from '../state-handler/index.js';
-import { EventManager } from '../eventManager.js';
+import { EventManager } from '../event.js';
 export declare class NodeManager implements Module {
     #private;
     private eventManager;

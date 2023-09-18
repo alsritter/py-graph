@@ -11,7 +11,7 @@ import { CanvasManager } from './canvas-manager/index.js';
 import { ExtensionsManager } from './extension-manager/index.js';
 import { WorkflowManager } from './workflow-manager/index.js';
 import { NodeManager } from './node-manager/index.js';
-import { EventManager } from './eventManager.js';
+import { EventManager } from './event.js';
 import { StateHandler } from './state-handler/index.js';
 import { Logger } from './logger/index.js';
 export class ComfyApp {
@@ -44,7 +44,6 @@ export class ComfyApp {
                 });
             }
             for (const module of modules) {
-                console.log(`Starting module ${module.constructor.name}`);
                 yield module.setup();
             }
             yield eventManager.invokeExtensions('setup', this);

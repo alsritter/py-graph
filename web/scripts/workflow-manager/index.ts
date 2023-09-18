@@ -1,5 +1,5 @@
 import { $el } from '../canvas-manager/tools.js'
-import { EventManager } from '../eventManager.js'
+import { EventManager } from '../event.js'
 import { defaultGraph } from './defaultGraph.js'
 import { CanvasManager } from '../canvas-manager/index.js'
 import { StateHandler } from '../state-handler/index.js'

@@ -1,5 +1,5 @@
 import { api } from '../api.js'
-import { EventManager } from '../eventManager.js'
+import { EventManager } from '../event.js'
 
 export class ExtensionsManager implements Module {
   /**
@@ -50,7 +50,6 @@ export class ExtensionsManager implements Module {
         // 具体参考 logging.js.example 文件的说明
         return await Promise.all(
           this.extensions.map(async (ext) => {
-            console.log(`Calling extension '${ext.name}' method '${key}'`)
             if (method in ext) {
               try {
                 return await ext[key](...args, this)

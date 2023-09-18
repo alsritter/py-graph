@@ -1,7 +1,7 @@
 import { api } from '../api.js'
 import { CanvasManager } from '../canvas-manager/index.js'
 import { StateHandler } from '../state-handler/index.js'
-import { EventManager } from '../eventManager.js'
+import { EventManager } from '../event.js'
 import { ComfyWidgets } from '../canvas-manager/widgets.js'
 
 export class NodeManager implements Module {

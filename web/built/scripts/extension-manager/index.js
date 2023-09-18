@@ -44,7 +44,6 @@ export class ExtensionsManager {
         for (const key of events) {
             this.eventManager.addEventListener(key, (method, ...args) => __awaiter(this, void 0, void 0, function* () {
                 return yield Promise.all(this.extensions.map((ext) => __awaiter(this, void 0, void 0, function* () {
-                    console.log(`Calling extension '${ext.name}' method '${key}'`);
                     if (method in ext) {
                         try {
                             return yield ext[key](...args, this);

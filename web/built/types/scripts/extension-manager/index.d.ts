@@ -1,4 +1,4 @@
-import { EventManager } from '../eventManager.js';
+import { EventManager } from '../event.js';
 export declare class ExtensionsManager implements Module {
     private eventManager;
     extensions: ComfyExtension[];
