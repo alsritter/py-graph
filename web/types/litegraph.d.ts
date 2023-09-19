@@ -3,6 +3,7 @@
 // Definitions by: NateScarlet <https://github.com/NateScarlet>
 export declare global {
   type LMouseEvent = MouseEvent & { canvasX: number; canvasY: number }
+  type LDragEvent = DragEvent & { canvasX: number; canvasY: number }
   type Vector2 = [number, number]
   type Vector4 = [number, number, number, number]
   type widgetTypes =
@@ -1161,14 +1162,14 @@ export declare global {
      * @param event
      * @returns
      */
-    onDragDrop?: (event: DragEvent) => boolean
+    onDragDrop?: (event: LDragEvent | LMouseEvent) => boolean
 
     /**
      * Add handler to check if an image is being dragged over our node
      * @param event
      * @returns
      */
-    onDragOver?: (event: DragEvent) => boolean
+    onDragOver?: (event: LDragEvent | LMouseEvent) => boolean
   }
 
   type LGraphNodeConstructor<T extends LGraphNode = LGraphNode> = {
@@ -1472,8 +1473,8 @@ export declare global {
 
     copyToClipboard(): void
     pasteFromClipboard(): void
-    processDrop(e: DragEvent): void
-    checkDropItem(e: DragEvent): void
+    processDrop(e: LDragEvent): void
+    checkDropItem(e: LDragEvent): void
     processNodeDblClicked(n: LGraphNode): void
     processNodeSelected(n: LGraphNode, e: LMouseEvent): void
     processNodeDeselected(node: LGraphNode): void
@@ -1607,7 +1608,7 @@ export declare global {
     /** converts event coordinates from canvas2D to graph coordinates */
     convertEventToCanvasOffset(e: LMouseEvent): Vector2
     /** adds some useful properties to a mouse event, like the position in graph coordinates */
-    adjustLMouseEvent(e: LMouseEvent): void
+    adjustMouseEvent(e: LMouseEvent): void
 
     getCanvasMenuOptions(): ContextMenuItem[]
     getNodeMenuOptions(node: LGraphNode): ContextMenuItem[]

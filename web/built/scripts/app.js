@@ -40,7 +40,7 @@ export class ComfyApp {
                     extensionsManager: this.extensionsManager,
                     canvasManager: this.canvasManager,
                     stateHandler: this.stateHandler,
-                    workflowManager: this.workflowManager,
+                    workflowManager: this.workflowManager
                 });
             }
             for (const module of modules) {

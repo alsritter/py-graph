@@ -297,7 +297,7 @@ export class WorkflowManager implements Module {
    */
   #addDropHandler() {
     // Get prompt from dropped PNG or json
-    document.addEventListener('drop', async (event) => {
+    document.addEventListener('drop', async (event: LDragEvent) => {
       event.preventDefault()
       event.stopPropagation()
 
@@ -340,13 +340,11 @@ export class WorkflowManager implements Module {
     // Add handler for dropping onto a specific node
     this.canvasManager.canvasEl.addEventListener(
       'dragover',
-      (e) => {
+      (e: LMouseEvent) => {
         this.canvasManager.canvas.adjustMouseEvent(e)
         // @ts-ignore
         const node = this.graph.getNodeOnPos(
-          // @ts-ignore
           e.canvasX,
-          // @ts-ignore
           e.canvasY
         ) as LGraphNode
         if (node) {

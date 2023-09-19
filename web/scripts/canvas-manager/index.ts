@@ -49,6 +49,12 @@ export class CanvasManager implements Module {
     canvasEl.tabIndex = 1
     document.body.prepend(canvasEl)
 
+    // 注意，这个 processKey 函数使用了 this.processKey.bind(this); 返回了一个新函数给按键回调处理
+    // 所以得放在实例化 LGraphCanvas 之前调用
+    // 参考：https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
+    this.#addProcessKeyHandler()
+    this.#addProcessMouseHandler()
+
     this.graph = new LGraph()
     const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph))
     this.ctx = canvasEl.getContext('2d')
@@ -80,8 +86,6 @@ export class CanvasManager implements Module {
   async setup() {
     await this.eventManager.invokeExtensions('init', this.center)
     this.#addKeyboardHandler()
-    this.#addProcessMouseHandler()
-    this.#addProcessKeyHandler()
   }
 
   getPreviewFormatParam() {
@@ -172,7 +176,11 @@ export class CanvasManager implements Module {
    *
    * Ctrl + M：静音/取消静音选定的节点
    * Ctrl + B：禁用/启用选定的节点
-   *
+   *  具体参考：https://vscode.dev/github/alsritter/py-graph/blob/type/web/lib/litegraph.core.js#L70
+   *    ALWAYS: 0,
+   *    ON_EVENT: 1,
+   *    NEVER: 2,
+   *    ON_TRIGGER: 3,
    */
   #addProcessKeyHandler() {
     const self = this
@@ -203,7 +211,6 @@ export class CanvasManager implements Module {
 
       if (e.type == 'keydown') {
         // Ctrl + M：静音/取消静音
-        console.log('Ctrl + M')
         if (e.keyCode == 77 && e.ctrlKey) {
           if (this.selected_nodes) {
             for (var i in this.selected_nodes) {

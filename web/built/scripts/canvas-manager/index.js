@@ -27,6 +27,8 @@ export class CanvasManager {
         }));
         canvasEl.tabIndex = 1;
         document.body.prepend(canvasEl);
+        __classPrivateFieldGet(this, _CanvasManager_instances, "m", _CanvasManager_addProcessKeyHandler).call(this);
+        __classPrivateFieldGet(this, _CanvasManager_instances, "m", _CanvasManager_addProcessMouseHandler).call(this);
         this.graph = new LGraph();
         const canvas = (this.canvas = new LGraphCanvas(canvasEl, this.graph));
         this.ctx = canvasEl.getContext('2d');
@@ -51,8 +53,6 @@ export class CanvasManager {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.eventManager.invokeExtensions('init', this.center);
             __classPrivateFieldGet(this, _CanvasManager_instances, "m", _CanvasManager_addKeyboardHandler).call(this);
-            __classPrivateFieldGet(this, _CanvasManager_instances, "m", _CanvasManager_addProcessMouseHandler).call(this);
-            __classPrivateFieldGet(this, _CanvasManager_instances, "m", _CanvasManager_addProcessKeyHandler).call(this);
         });
     }
     getPreviewFormatParam() {
@@ -118,7 +118,6 @@ _CanvasManager_instances = new WeakSet(), _CanvasManager_addKeyboardHandler = fu
             return;
         }
         if (e.type == 'keydown') {
-            console.log('Ctrl + M');
             if (e.keyCode == 77 && e.ctrlKey) {
                 if (this.selected_nodes) {
                     for (var i in this.selected_nodes) {
