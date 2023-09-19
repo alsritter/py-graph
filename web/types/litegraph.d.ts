@@ -639,6 +639,8 @@ export declare global {
     origin_slot: number
     target_id: number
     target_slot: number
+    color?: string
+
     constructor(
       id: number,
       type: string,
