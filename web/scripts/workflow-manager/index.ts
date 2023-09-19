@@ -39,7 +39,7 @@ export class WorkflowManager implements Module {
 
     // We failed to restore a workflow so load the default
     if (!restored) {
-      this.loadGraphData(null)
+      this.loadGraphData()
     }
 
     // Save current workflow automatically
@@ -53,13 +53,14 @@ export class WorkflowManager implements Module {
     )
 
     this.#addDropHandler()
+    this.#addPasteHandler()
   }
 
   /**
    * Populates the graph with the specified workflow data
    * @param graphData A serialized graph object
    */
-  async loadGraphData(graphData) {
+  async loadGraphData(graphData?) {
     this.stateHandler.clean()
 
     let reset_invalid_values = false
@@ -151,7 +152,11 @@ export class WorkflowManager implements Module {
         }
       }
 
-      await this.eventManager.invokeExtensions('loadedGraphNode', node, this.center)
+      await this.eventManager.invokeExtensions(
+        'loadedGraphNode',
+        node,
+        this.center
+      )
     }
 
     if (missingNodeTypes.length) {
@@ -343,10 +348,7 @@ export class WorkflowManager implements Module {
       (e: LMouseEvent) => {
         this.canvasManager.canvas.adjustMouseEvent(e)
         // @ts-ignore
-        const node = this.graph.getNodeOnPos(
-          e.canvasX,
-          e.canvasY
-        ) as LGraphNode
+        const node = this.graph.getNodeOnPos(e.canvasX, e.canvasY) as LGraphNode
         if (node) {
           if (node.onDragOver && node.onDragOver(e)) {
             this.nodeManager.dragOverNode = node
@@ -362,6 +364,31 @@ export class WorkflowManager implements Module {
       },
       false
     )
+  }
+
+  /**
+   * Adds a handler on paste that extracts and loads workflows from pasted JSON data
+   */
+  #addPasteHandler() {
+    document.addEventListener('paste', (e) => {
+      // @ts-ignore
+      let data = (e.clipboardData || window.clipboardData).getData('text/plain')
+      let workflow
+      try {
+        data = data.slice(data.indexOf('{'))
+        workflow = JSON.parse(data)
+      } catch (err) {
+        try {
+          data = data.slice(data.indexOf('workflow\n'))
+          data = data.slice(data.indexOf('{'))
+          workflow = JSON.parse(data)
+        } catch (error) {}
+      }
+
+      if (workflow && workflow.version && workflow.nodes && workflow.extra) {
+        this.loadGraphData(workflow)
+      }
+    })
   }
 
   /**

@@ -24,6 +24,31 @@ export class ComfyUI {
     this.queue = new ComfyList('Queue', app)
     this.history = new ComfyList('History', app)
 
+    const confirmClear = this.settings.addSetting({
+      id: 'Comfy.ConfirmClear',
+      name: 'Require confirmation when clearing workflow',
+      type: 'boolean',
+      defaultValue: true
+    })
+
+    const promptFilename = this.settings.addSetting({
+      id: 'Comfy.PromptFilename',
+      name: 'Runner for filename when saving workflow',
+      type: 'boolean',
+      defaultValue: true
+    })
+
+    const fileInput = $el('input', {
+      id: 'comfy-file-input',
+      type: 'file',
+      accept: '.json,image/png,.latent,.safetensors',
+      style: { display: 'none' },
+      parent: document.body,
+      onchange: () => {
+        app.workflowManager.handleFile(fileInput.files[0])
+      }
+    })
+
     api.addEventListener('status', () => {
       this.queue.update()
       this.history.update()
@@ -123,7 +148,121 @@ export class ComfyUI {
             })
           ])
         ]
-      )
+      ),
+      $el('div.comfy-menu-btns', [
+        $el('button', {
+          id: 'queue-front-button',
+          textContent: 'Queue Front',
+          onclick: () => app.stateHandler.queueRunner(-1, this.batchCount)
+        }),
+        $el('button', {
+          $: (b) => (this.queue.button = b),
+          id: 'comfy-view-queue-button',
+          textContent: 'View Queue',
+          onclick: () => {
+            this.history.hide()
+            this.queue.toggle()
+          }
+        }),
+        $el('button', {
+          $: (b) => (this.history.button = b),
+          id: 'comfy-view-history-button',
+          textContent: 'View History',
+          onclick: () => {
+            this.queue.hide()
+            this.history.toggle()
+          }
+        })
+      ]),
+      this.queue.element,
+      this.history.element,
+      $el('button', {
+        id: 'comfy-save-button',
+        textContent: 'Save',
+        onclick: () => {
+          let filename = 'workflow.json'
+          if (promptFilename.value) {
+            filename = prompt('Save workflow as:', filename)
+            if (!filename) return
+            if (!filename.toLowerCase().endsWith('.json')) {
+              filename += '.json'
+            }
+          }
+          const json = JSON.stringify(
+            app.canvasManager.graph.serialize(),
+            null,
+            2
+          ) // convert the data to a JSON string
+          const blob = new Blob([json], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = $el('a', {
+            href: url,
+            download: filename,
+            style: { display: 'none' },
+            parent: document.body
+          })
+          a.click()
+          setTimeout(function () {
+            a.remove()
+            window.URL.revokeObjectURL(url)
+          }, 0)
+        }
+      }),
+      $el('button', {
+        id: 'comfy-dev-save-api-button',
+        textContent: 'Save (API Format)',
+        style: { width: '100%', display: 'none' },
+        onclick: () => {
+          let filename = 'workflow_api.json'
+          if (promptFilename.value) {
+            filename = prompt('Save workflow (API) as:', filename)
+            if (!filename) return
+            if (!filename.toLowerCase().endsWith('.json')) {
+              filename += '.json'
+            }
+          }
+          app.workflowManager.graphToRunner().then((p) => {
+            const json = JSON.stringify(p.output, null, 2) // convert the data to a JSON string
+            const blob = new Blob([json], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = $el('a', {
+              href: url,
+              download: filename,
+              style: { display: 'none' },
+              parent: document.body
+            })
+            a.click()
+            setTimeout(function () {
+              a.remove()
+              window.URL.revokeObjectURL(url)
+            }, 0)
+          })
+        }
+      }),
+      $el('button', {
+        id: 'comfy-load-button',
+        textContent: 'Load',
+        onclick: () => fileInput.click()
+      }),
+      $el('button', {
+        id: 'comfy-clear-button',
+        textContent: 'Clear',
+        onclick: () => {
+          if (!confirmClear.value || confirm('Clear workflow?')) {
+            app.stateHandler.clean()
+            app.canvasManager.graph.clear()
+          }
+        }
+      }),
+      $el('button', {
+        id: 'comfy-load-default-button',
+        textContent: 'Load Default',
+        onclick: () => {
+          if (!confirmClear.value || confirm('Load default workflow?')) {
+            app.workflowManager.loadGraphData()
+          }
+        }
+      })
     ])
 
     this.dragElement(this.menuContainer, this.settings)
@@ -332,7 +471,7 @@ export class ComfyList {
   #type: string // The type of the list.
   #text: string // The text to display in the list.
   element: CustomElement // The list element.
-  button: HTMLButtonElement
+  button: CustomElement // The button to toggle the list.
   app: ComfyCenter
 
   /**

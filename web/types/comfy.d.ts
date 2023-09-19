@@ -4,6 +4,7 @@ import type { Logger } from '../scripts/logger'
 import type { ExtensionsManager } from '../scripts/extension-manager/index'
 import type { StateHandler } from '../scripts/state-handler/index'
 import type { CanvasManager } from '../scripts/canvas-manager/index'
+import type { WorkflowManager } from '../scripts/workflow-manager/index'
 import { ComfyApp } from '../scripts/app'
 
 type Merge<M, N> = Omit<M, Extract<keyof M, keyof N>> & N
