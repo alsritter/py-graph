@@ -177,10 +177,12 @@ export class CanvasManager implements Module {
    * Ctrl + M：静音/取消静音选定的节点
    * Ctrl + B：禁用/启用选定的节点
    *  具体参考：https://vscode.dev/github/alsritter/py-graph/blob/type/web/lib/litegraph.core.js#L70
-   *    ALWAYS: 0,
-   *    ON_EVENT: 1,
-   *    NEVER: 2,
-   *    ON_TRIGGER: 3,
+   * LiteGraph 节点运行模式顺序如下：
+   *    - ALWAYS (总是): 0 - 节点会始终运行，即使没有输入数据也会执行。这通常用于执行常规操作或发出事件。
+   *    - ON_EVENT (事件触发): 1 - 节点会监听一个特定的事件，并在该事件触发时执行。这用于实现事件驱动的逻辑，例如响应鼠标点击或键盘事件。
+   *    - NEVER (从不): 2 - 节点不会自动执行，必须手动触发。这在需要手动控制节点执行时很有用。
+   *    - ON_TRIGGER (触发执行): 3 - 节点仅在收到来自输入连接的触发信号时才会执行。
+   *    - ON_REQUEST (请求执行): 4 - 节点仅在收到来自输入连接的请求信号时才会执行。
    */
   #addProcessKeyHandler() {
     const self = this
