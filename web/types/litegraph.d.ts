@@ -702,6 +702,8 @@ export declare global {
       collapsed: boolean
     }>
 
+    _collapsed_width: number
+
     color: string
     bgcolor: string
     boxcolor: string

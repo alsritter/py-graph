@@ -106,7 +106,6 @@ _CanvasManager_instances = new WeakSet(), _CanvasManager_addKeyboardHandler = fu
     const origProcessKey = LGraphCanvas.prototype.processKey;
     LGraphCanvas.prototype.processKey = function (e) {
         const res = origProcessKey.apply(this, arguments);
-        console.log('Ctrl + M', e);
         if (res === false) {
             return res;
         }

@@ -192,8 +192,6 @@ export class CanvasManager implements Module {
     LGraphCanvas.prototype.processKey = function (e) {
       const res = origProcessKey.apply(this, arguments)
 
-      console.log('Ctrl + M', e)
-
       // 如果原始处理方法返回了 false，则终止继续处理
       if (res === false) {
         return res
