@@ -14,6 +14,9 @@ export class ComfyUI {
 
   /**
    * Represents the UI of the application.
+   * 
+   * !! 注意这里的 id，是可以通过 document.querySelector 取得元素的，例如保存之类的快捷键就是通过这个来实现的。
+   * 
    * @constructor
    * @param app - The main application object.
    */
