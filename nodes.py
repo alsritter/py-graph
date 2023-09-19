@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+import internal.utils
 import time
+
 
 class BaseNode(ABC):
     # @classmethod：将方法转换为类方法，即该方法可以通过类名直接调用，而不需要先创建类的实例。
@@ -23,10 +25,8 @@ class BaseNode(ABC):
     RETURN_TYPES: tuple[str, ...]
     RETURN_NAMES: tuple[str, ...]
     # OUTPUT_IS_LIST: tuple[bool, ...] = [False] * len(RETURN_TYPES)
-
-    @abstractmethod
-    def execute(self, *args, **kwargs):
-        pass
+    # def execute(self, *args, **kwargs):
+    #     pass
 
 
 # ==================== NODES ====================
@@ -35,7 +35,12 @@ class BaseNode(ABC):
 class AddNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"operand1": ("FLOAT", {"default_input": True}), "operand2": ("FLOAT", {"default_input": True})}}
+        return {
+            "required": {
+                "operand1": ("FLOAT", {"default_input": True}),
+                "operand2": ("FLOAT", {"default_input": True}),
+            }
+        }
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -50,7 +55,12 @@ class AddNode(BaseNode):
 class SubtractNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"minuend": ("FLOAT", {"default_input": True}), "subtrahend": ("FLOAT", {"default_input": True})}}
+        return {
+            "required": {
+                "minuend": ("FLOAT", {"default_input": True}),
+                "subtrahend": ("FLOAT", {"default_input": True}),
+            }
+        }
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "subtract"
@@ -64,7 +74,12 @@ class SubtractNode(BaseNode):
 class MultiplyNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"factor1": ("FLOAT", {"default_input": True}), "factor2": ("FLOAT", {"default_input": True})}}
+        return {
+            "required": {
+                "factor1": ("FLOAT", {"default_input": True}),
+                "factor2": ("FLOAT", {"default_input": True}),
+            }
+        }
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -78,7 +93,12 @@ class MultiplyNode(BaseNode):
 class DivideNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"dividend": ("FLOAT", {"default_input": True}), "divisor": ("FLOAT", {"default_input": True})}}
+        return {
+            "required": {
+                "dividend": ("FLOAT", {"default_input": True}),
+                "divisor": ("FLOAT", {"default_input": True}),
+            }
+        }
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
@@ -119,7 +139,6 @@ class ValueInputNode(BaseNode):
     CATEGORY = "Input"
 
     def execute(self, value):
-        time.sleep(10)
         return (value,)
 
 
@@ -136,7 +155,11 @@ class OutputToStdoutNode(BaseNode):
     OUTPUT_NODE = True
 
     def execute(self, value):
-        # Sleep 1s
+        pbar = internal.utils.ProgressBar(10)
+        for x in range(10):
+            time.sleep(1)
+            pbar.update_absolute(x, 10)
+
         print("OutPut: ", value)
         return ()
 

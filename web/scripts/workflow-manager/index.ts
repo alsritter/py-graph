@@ -308,7 +308,7 @@ export class WorkflowManager implements Module {
 
       const n = this.nodeManager.dragOverNode
       this.nodeManager.dragOverNode = null
-      // Node handles file drop, we dont use the built in onDropFile handler as its buggy
+      // Node handles file drop, we don't use the built in onDropFile handler as its buggy
       // If you drag multiple files it will call it multiple times with the same file
       if (n && n.onDragDrop && (await n.onDragDrop(event))) {
         return

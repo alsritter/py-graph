@@ -536,12 +536,7 @@ def recursive_execute(
                     {"node": unique_id, "output": output_ui, "runner_id": runner_id},
                     server.client_id,
                 )
-        print("Processing interrupted")
 
-        # skip formatting inputs/outputs
-        error_details = {
-            "node_id": unique_id,
-        }
     except Exception as ex:
         typ, _, tb = sys.exc_info()
         exception_type = full_type_name(typ)

@@ -464,6 +464,9 @@ export class NodeManager implements Module {
 
       let color = null
       let lineWidth = 1
+
+      // + 是一个一元操作符，通常用于将其右侧的值转换为数字（number）。
+      // 它会尝试将其右侧的值解析为数字，如果可以解析成功，就返回相应的数字值，否则返回 NaN（表示“不是一个数字”）。
       if (node.id === +self.stateHandler.runningNodeId) {
         color = '#0f0'
       } else if (self.dragOverNode && node.id === self.dragOverNode.id) {

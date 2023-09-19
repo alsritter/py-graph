@@ -10,14 +10,14 @@ export class ComfyUI {
   history: ComfyList
   queueSize: CustomElement
   lastQueueSize: number | string = 0
-  batchCount: number = 0
+  batchCount: number = 1
 
   /**
    * Represents the UI of the application.
-   * 
+   *
    * !! 注意这里的 id，是可以通过 document.querySelector 取得元素的，例如保存之类的快捷键就是通过这个来实现的。
    * https://vscode.dev/github/alsritter/py-graph/blob/type/web/extensions/core/keybinds.ts#L21
-   * 
+   *
    * @constructor
    * @param app - The main application object.
    */
@@ -123,11 +123,10 @@ export class ComfyUI {
               min: '1',
               style: { width: '35%', 'margin-left': '0.4em' },
               oninput: (i) => {
-                this.batchCount = i.target.value(
-                  document.getElementById(
-                    'batchCountInputRange'
-                  ) as HTMLInputElement
-                ).value = this.batchCount
+                this.batchCount = i.target.value
+                // @ts-ignore
+                document.getElementById('batchCountInputRange').value =
+                  this.batchCount
               }
             }),
             $el('input', {

@@ -73,8 +73,7 @@ export class StateHandler implements Module {
   /**
    * 执行当前图形工作流。
    */
-  async queueRunner(number, batchCount = 1) {
-    console.log('Queueing runner', number, batchCount)
+  async queueRunner(number: number, batchCount = 1) {
     this.#queueItems.push({ number, batchCount })
 
     // Only have one action process the items so each one gets a unique seed correctly

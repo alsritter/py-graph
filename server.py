@@ -373,6 +373,7 @@ class PyGraphServer:
     def queue_updated(self):
         self.send_sync("status", {"status": self.get_queue_info()})
 
+    # 用于发送同步消息的函数
     def send_sync(self, event, data, sid=None):
         self.loop.call_soon_threadsafe(self.messages.put_nowait, (event, data, sid))
 
