@@ -147,6 +147,8 @@ export class NodeManager implements Module {
       node.prototype.comfyClass = nodeData.name
 
       this.#addDrawBackgroundHandler(node as any)
+      this.#addNodeKeyHandler(node)
+      this.#addNodeContextMenuHandler(node)
 
       await this.eventManager.invokeExtensions(
         'beforeRegisterNodeDef',
@@ -167,7 +169,7 @@ export class NodeManager implements Module {
    * @param node The node to add the draw handler
    */
   #addDrawBackgroundHandler(node) {
-    const app = this
+    const self = this
 
     function getImageTop(node: LGraphNode) {
       let shiftY: number
@@ -191,6 +193,9 @@ export class NodeManager implements Module {
       return shiftY
     }
 
+    /**
+     * 根据图片大小，设置节点的宽高
+     */
     node.prototype.setSizeForImage = function () {
       if (this.inputHeight) {
         this.setSize(this.size)
@@ -201,12 +206,16 @@ export class NodeManager implements Module {
         this.setSize([this.size[0], minHeight])
       }
     }
+
+    /**
+     * 绘制 Node 的背景
+     */
     node.prototype.onDrawBackground = function (ctx) {
       if (!this.flags.collapsed) {
         let imgURLs = []
         let imagesChanged = false
 
-        const output = app.stateHandler.nodeOutputs[this.id + '']
+        const output = self.stateHandler.nodeOutputs[this.id + '']
         if (output && output.images) {
           if (this.images !== output.images) {
             this.images = output.images
@@ -216,14 +225,14 @@ export class NodeManager implements Module {
                 return api.apiURL(
                   '/view?' +
                     new URLSearchParams(params).toString() +
-                    app.canvasManager.getPreviewFormatParam()
+                    self.canvasManager.getPreviewFormatParam()
                 )
               })
             )
           }
         }
 
-        const preview = app.nodePreviewImages?.[this.id + '']
+        const preview = self.nodePreviewImages?.[this.id + '']
         if (this.preview !== preview) {
           this.preview = preview
           imagesChanged = true
@@ -251,7 +260,7 @@ export class NodeManager implements Module {
               ) {
                 this.imgs = imgs.filter(Boolean)
                 this.setSizeForImage?.()
-                app.canvasManager.graph.setDirtyCanvas(true)
+                self.canvasManager.graph.setDirtyCanvas(true)
               }
             })
           } else {
@@ -579,5 +588,140 @@ export class NodeManager implements Module {
 
       return res
     }
+  }
+
+  /**
+   * 处理 Node 里面的键盘事件
+   * @param node
+   */
+  #addNodeKeyHandler(node) {
+    const app = this
+    const origNodeOnKeyDown = node.prototype.onKeyDown
+
+    node.prototype.onKeyDown = function (e) {
+      const self = this as LGraphNode
+      if (origNodeOnKeyDown && origNodeOnKeyDown.apply(this, e) === false) {
+        return false
+      }
+
+      // 如果节点被折叠，没有图像，或者没有设置图像索引，则不进行处理
+      if (self.flags.collapsed || !self.imgs || self.imageIndex === null) {
+        return
+      }
+
+      let handled = false
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (e.key === 'ArrowLeft') {
+          self.imageIndex -= 1
+        } else if (e.key === 'ArrowRight') {
+          self.imageIndex += 1
+        }
+        self.imageIndex %= self.imgs.length
+
+        if (self.imageIndex < 0) {
+          self.imageIndex = self.imgs.length + self.imageIndex
+        }
+        handled = true
+      } else if (e.key === 'Escape') {
+        self.imageIndex = null
+        handled = true
+      }
+
+      if (handled === true) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+  }
+
+  /**
+   * Adds special context menu handling for nodes
+   * e.g. this adds Open Image functionality for nodes that show images
+   * @param node The node to add the menu handler
+   */
+  #addNodeContextMenuHandler(node) {
+    node.prototype.getExtraMenuOptions = function (_, options) {
+      if (this.imgs) {
+        // If this node has images then we add an open in new tab item
+        let img
+        if (this.imageIndex != null) {
+          // An image is selected so select that
+          img = this.imgs[this.imageIndex]
+        } else if (this.overIndex != null) {
+          // No image is selected but one is hovered
+          img = this.imgs[this.overIndex]
+        }
+        if (img) {
+          options.unshift(
+            {
+              content: 'Open Image',
+              callback: () => {
+                let url = new URL(img.src)
+                url.searchParams.delete('preview')
+                window.open(url, '_blank')
+              }
+            },
+            {
+              content: 'Save Image',
+              callback: () => {
+                const a = document.createElement('a')
+                let url = new URL(img.src)
+                url.searchParams.delete('preview')
+                a.href = url.toString()
+                a.setAttribute(
+                  'download',
+                  new URLSearchParams(url.search).get('filename')
+                )
+                document.body.append(a)
+                a.click()
+                requestAnimationFrame(() => a.remove())
+              }
+            }
+          )
+        }
+      }
+
+      options.push({
+        content: 'Bypass',
+        callback: (obj) => {
+          if (this.mode === 4) this.mode = 0
+          else this.mode = 4
+          this.graph.change()
+        }
+      })
+
+      // prevent conflict of clipspace content
+      if (!StateHandler.clipspace_return_node) {
+        options.push({
+          content: 'Copy (Clipspace)',
+          callback: (obj) => {
+            StateHandler.copyToClipspace(this)
+          }
+        })
+
+        if (StateHandler.clipspace != null) {
+          options.push({
+            content: 'Paste (Clipspace)',
+            callback: () => {
+              StateHandler.pasteFromClipspace(this)
+            }
+          })
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查节点是否是图片节点
+   */
+  static isImageNode(node): boolean {
+    return (
+      node.imgs ||
+      (node &&
+        node.widgets &&
+        node.widgets.findIndex((obj) => obj.name === 'image') >= 0)
+    )
   }
 }

@@ -14,6 +14,7 @@ export declare global {
     | 'toggle'
     | 'button'
     | 'customtext'
+    | 'image'
 
   type SlotShape =
     | typeof LiteGraph.BOX_SHAPE
@@ -734,6 +735,7 @@ export declare global {
 
     // ==== 自定义的参数 ====
     imgs?: Record<string, any>
+    imageIndex?: number
     inputHeight?: number
     widgets?: IWidget[]
     comfyClass?: string

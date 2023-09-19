@@ -182,7 +182,7 @@ export class CanvasManager implements Module {
    *    - ON_EVENT (事件触发): 1 - 节点会监听一个特定的事件，并在该事件触发时执行。这用于实现事件驱动的逻辑，例如响应鼠标点击或键盘事件。
    *    - NEVER (从不): 2 - 节点不会自动执行，必须手动触发。这在需要手动控制节点执行时很有用。
    *    - ON_TRIGGER (触发执行): 3 - 节点仅在收到来自输入连接的触发信号时才会执行。
-   *    - ON_REQUEST (请求执行): 4 - 节点仅在收到来自输入连接的请求信号时才会执行。
+   *    - ON_REQUEST (请求执行): 4 - 节点仅在收到来自输入连接的请求信号时才会执行。(官方好像没有实现？)
    */
   #addProcessKeyHandler() {
     const self = this

@@ -15,4 +15,5 @@ export declare class NodeManager implements Module {
     registerNodesFromDefs(defs: {
         [x: string]: any;
     }): Promise<void>;
+    static isImageNode(node: any): boolean;
 }

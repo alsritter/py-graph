@@ -12,8 +12,9 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _NodeManager_instances, _NodeManager_addDrawBackgroundHandler, _NodeManager_addDrawNodeHandler;
+var _NodeManager_instances, _NodeManager_addDrawBackgroundHandler, _NodeManager_addDrawNodeHandler, _NodeManager_addNodeKeyHandler, _NodeManager_addNodeContextMenuHandler;
 import { api } from '../api.js';
+import { StateHandler } from '../state-handler/index.js';
 import { ComfyWidgets } from '../canvas-manager/widgets.js';
 export class NodeManager {
     constructor(eventManager) {
@@ -90,15 +91,23 @@ export class NodeManager {
                 });
                 node.prototype.comfyClass = nodeData.name;
                 __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addDrawBackgroundHandler).call(this, node);
+                __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addNodeKeyHandler).call(this, node);
+                __classPrivateFieldGet(this, _NodeManager_instances, "m", _NodeManager_addNodeContextMenuHandler).call(this, node);
                 yield this.eventManager.invokeExtensions('beforeRegisterNodeDef', node, nodeData, this.center);
                 LiteGraph.registerNodeType(nodeId, node);
                 node.category = nodeData.category;
             }
         });
     }
+    static isImageNode(node) {
+        return (node.imgs ||
+            (node &&
+                node.widgets &&
+                node.widgets.findIndex((obj) => obj.name === 'image') >= 0));
+    }
 }
 _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = function _NodeManager_addDrawBackgroundHandler(node) {
-    const app = this;
+    const self = this;
     function getImageTop(node) {
         var _a;
         let shiftY;
@@ -140,7 +149,7 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
         if (!this.flags.collapsed) {
             let imgURLs = [];
             let imagesChanged = false;
-            const output = app.stateHandler.nodeOutputs[this.id + ''];
+            const output = self.stateHandler.nodeOutputs[this.id + ''];
             if (output && output.images) {
                 if (this.images !== output.images) {
                     this.images = output.images;
@@ -148,11 +157,11 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
                     imgURLs = imgURLs.concat(output.images.map((params) => {
                         return api.apiURL('/view?' +
                             new URLSearchParams(params).toString() +
-                            app.canvasManager.getPreviewFormatParam());
+                            self.canvasManager.getPreviewFormatParam());
                     }));
                 }
             }
-            const preview = (_a = app.nodePreviewImages) === null || _a === void 0 ? void 0 : _a[this.id + ''];
+            const preview = (_a = self.nodePreviewImages) === null || _a === void 0 ? void 0 : _a[this.id + ''];
             if (this.preview !== preview) {
                 this.preview = preview;
                 imagesChanged = true;
@@ -176,7 +185,7 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
                             (!preview || this.preview === preview)) {
                             this.imgs = imgs.filter(Boolean);
                             (_a = this.setSizeForImage) === null || _a === void 0 ? void 0 : _a.call(this);
-                            app.canvasManager.graph.setDirtyCanvas(true);
+                            self.canvasManager.graph.setDirtyCanvas(true);
                         }
                     });
                 }
@@ -398,6 +407,101 @@ _NodeManager_instances = new WeakSet(), _NodeManager_addDrawBackgroundHandler = 
         this.editor_alpha = editor_alpha;
         node.bgcolor = old_color;
         return res;
+    };
+}, _NodeManager_addNodeKeyHandler = function _NodeManager_addNodeKeyHandler(node) {
+    const app = this;
+    const origNodeOnKeyDown = node.prototype.onKeyDown;
+    node.prototype.onKeyDown = function (e) {
+        const self = this;
+        if (origNodeOnKeyDown && origNodeOnKeyDown.apply(this, e) === false) {
+            return false;
+        }
+        if (self.flags.collapsed || !self.imgs || self.imageIndex === null) {
+            return;
+        }
+        let handled = false;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            if (e.key === 'ArrowLeft') {
+                self.imageIndex -= 1;
+            }
+            else if (e.key === 'ArrowRight') {
+                self.imageIndex += 1;
+            }
+            self.imageIndex %= self.imgs.length;
+            if (self.imageIndex < 0) {
+                self.imageIndex = self.imgs.length + self.imageIndex;
+            }
+            handled = true;
+        }
+        else if (e.key === 'Escape') {
+            self.imageIndex = null;
+            handled = true;
+        }
+        if (handled === true) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }
+    };
+}, _NodeManager_addNodeContextMenuHandler = function _NodeManager_addNodeContextMenuHandler(node) {
+    node.prototype.getExtraMenuOptions = function (_, options) {
+        if (this.imgs) {
+            let img;
+            if (this.imageIndex != null) {
+                img = this.imgs[this.imageIndex];
+            }
+            else if (this.overIndex != null) {
+                img = this.imgs[this.overIndex];
+            }
+            if (img) {
+                options.unshift({
+                    content: 'Open Image',
+                    callback: () => {
+                        let url = new URL(img.src);
+                        url.searchParams.delete('preview');
+                        window.open(url, '_blank');
+                    }
+                }, {
+                    content: 'Save Image',
+                    callback: () => {
+                        const a = document.createElement('a');
+                        let url = new URL(img.src);
+                        url.searchParams.delete('preview');
+                        a.href = url.toString();
+                        a.setAttribute('download', new URLSearchParams(url.search).get('filename'));
+                        document.body.append(a);
+                        a.click();
+                        requestAnimationFrame(() => a.remove());
+                    }
+                });
+            }
+        }
+        options.push({
+            content: 'Bypass',
+            callback: (obj) => {
+                if (this.mode === 4)
+                    this.mode = 0;
+                else
+                    this.mode = 4;
+                this.graph.change();
+            }
+        });
+        if (!StateHandler.clipspace_return_node) {
+            options.push({
+                content: 'Copy (Clipspace)',
+                callback: (obj) => {
+                    StateHandler.copyToClipspace(this);
+                }
+            });
+            if (StateHandler.clipspace != null) {
+                options.push({
+                    content: 'Paste (Clipspace)',
+                    callback: () => {
+                        StateHandler.pasteFromClipspace(this);
+                    }
+                });
+            }
+        }
     };
 };
 //# sourceMappingURL=index.js.map

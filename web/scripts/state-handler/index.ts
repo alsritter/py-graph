@@ -1,10 +1,19 @@
 import { api } from '../api.js'
+import { app } from '../app.js'
 import { WorkflowManager } from '../workflow-manager/index.js'
 import { CanvasManager } from '../canvas-manager/index.js'
 import { NodeManager } from '../node-manager/index.js'
 import { Logger } from '../logger/index.js'
 
 export class StateHandler implements Module {
+  /**
+   * Content Clipboard
+   * @type {serialized node object}
+   */
+  static clipspace = null
+  static clipspace_invalidate_handler = null
+  static clipspace_return_node = null
+
   private workflowManager: WorkflowManager
   private nodeManager: NodeManager
   private canvasManager: CanvasManager
@@ -192,5 +201,156 @@ export class StateHandler implements Module {
     this.lastNodeErrors = null
     this.lastExecutionError = null
     this.runningNodeId = null
+  }
+
+  static onClipspaceEditorSave() {
+    if (StateHandler.clipspace_return_node) {
+      StateHandler.pasteFromClipspace(StateHandler.clipspace_return_node)
+    }
+  }
+
+  static onClipspaceEditorClosed() {
+    StateHandler.clipspace_return_node = null
+  }
+
+  /**
+   * 把当前节点的内容复制到剪贴板（例如数值之类的）
+   */
+  static copyToClipspace(node) {
+    var widgets = null
+    if (node.widgets) {
+      widgets = node.widgets.map(({ type, name, value }) => ({
+        type,
+        name,
+        value
+      }))
+    }
+
+    var imgs = undefined
+    var orig_imgs = undefined
+    if (node.imgs != undefined) {
+      imgs = []
+      orig_imgs = []
+
+      for (let i = 0; i < node.imgs.length; i++) {
+        imgs[i] = new Image()
+        imgs[i].src = node.imgs[i].src
+        orig_imgs[i] = imgs[i]
+      }
+    }
+
+    var selectedIndex = 0
+    if (node.imageIndex) {
+      selectedIndex = node.imageIndex
+    }
+
+    StateHandler.clipspace = {
+      widgets: widgets,
+      imgs: imgs,
+      original_imgs: orig_imgs,
+      images: node.images,
+      selectedIndex: selectedIndex,
+      img_paste_mode: 'selected' // reset to default im_paste_mode state on copy action
+    }
+
+    StateHandler.clipspace_return_node = null
+
+    if (StateHandler.clipspace_invalidate_handler) {
+      StateHandler.clipspace_invalidate_handler()
+    }
+  }
+
+  /**
+   * 把剪贴板里面的 Node 内容粘贴到当前节点（例如数值之类的）
+   */
+  static pasteFromClipspace(node) {
+    if (StateHandler.clipspace) {
+      // image paste
+      if (StateHandler.clipspace.imgs && node.imgs) {
+        if (node.images && StateHandler.clipspace.images) {
+          if (StateHandler.clipspace['img_paste_mode'] == 'selected') {
+            node.images = [
+              StateHandler.clipspace.images[
+                StateHandler.clipspace['selectedIndex']
+              ]
+            ]
+          } else {
+            node.images = StateHandler.clipspace.images
+          }
+
+          if (app.stateHandler.nodeOutputs[node.id + ''])
+            app.stateHandler.nodeOutputs[node.id + ''].images = node.images
+        }
+
+        if (StateHandler.clipspace.imgs) {
+          // deep-copy to cut link with clipspace
+          if (StateHandler.clipspace['img_paste_mode'] == 'selected') {
+            const img = new Image()
+            img.src =
+              StateHandler.clipspace.imgs[
+                StateHandler.clipspace['selectedIndex']
+              ].src
+            node.imgs = [img]
+            node.imageIndex = 0
+          } else {
+            const imgs = []
+            for (let i = 0; i < StateHandler.clipspace.imgs.length; i++) {
+              imgs[i] = new Image()
+              imgs[i].src = StateHandler.clipspace.imgs[i].src
+              node.imgs = imgs
+            }
+          }
+        }
+      }
+
+      if (node.widgets) {
+        if (StateHandler.clipspace.images) {
+          const clip_image =
+            StateHandler.clipspace.images[
+              StateHandler.clipspace['selectedIndex']
+            ]
+          const index = node.widgets.findIndex((obj) => obj.name === 'image')
+          if (index >= 0) {
+            if (
+              node.widgets[index].type != 'image' &&
+              typeof node.widgets[index].value == 'string' &&
+              clip_image.filename
+            ) {
+              node.widgets[index].value =
+                (clip_image.subfolder ? clip_image.subfolder + '/' : '') +
+                clip_image.filename +
+                (clip_image.type ? ` [${clip_image.type}]` : '')
+            } else {
+              node.widgets[index].value = clip_image
+            }
+          }
+        }
+        if (StateHandler.clipspace.widgets) {
+          StateHandler.clipspace.widgets.forEach(({ type, name, value }) => {
+            const prop = Object.values(node.widgets).find(
+              (obj: any) => obj.type === type && obj.name === name
+            ) as IWidget
+
+            if (prop && prop.type != 'button') {
+              if (
+                prop.type != 'image' &&
+                typeof prop.value == 'string' &&
+                value.filename
+              ) {
+                prop.value =
+                  (value.subfolder ? value.subfolder + '/' : '') +
+                  value.filename +
+                  (value.type ? ` [${value.type}]` : '')
+              } else {
+                prop.value = value
+                prop.callback(value)
+              }
+            }
+          })
+        }
+      }
+
+      app.canvasManager.graph.setDirtyCanvas(true)
+    }
   }
 }
