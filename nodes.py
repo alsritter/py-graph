@@ -139,6 +139,7 @@ class ValueInputNode(BaseNode):
     CATEGORY = "Input"
 
     def execute(self, value):
+        time.sleep(3)
         return (value,)
 
 
