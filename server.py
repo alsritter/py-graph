@@ -377,6 +377,12 @@ class PyGraphServer:
     def send_sync(self, event, data, sid=None):
         self.loop.call_soon_threadsafe(self.messages.put_nowait, (event, data, sid))
 
+    # 从队列里面取得消息并发送
+    async def publish_loop(self):
+        while True:
+            msg = await self.messages.get()
+            await self.send(*msg)
+
     async def start(self, address, port, verbose=True, call_on_start=None):
         runner = web.AppRunner(self.app)
         await runner.setup()

@@ -8,7 +8,7 @@ export class NodeManager implements Module {
   /**
    * Stores preview images for nodes
    */
-  nodePreviewImages: Record<string, string[]>
+  nodePreviewImages: Record<string, string[]> = {}
 
   /**
    * The node that is currently being dragged over

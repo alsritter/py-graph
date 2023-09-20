@@ -62,6 +62,8 @@ export class StateHandler implements Module {
   shiftDown: boolean = false
 
   init(config: ComfyCenter) {
+    this.logger = config.logger
+    this.nodeManager = config.nodeManager
     this.workflowManager = config.workflowManager
     this.canvasManager = config.canvasManager
   }

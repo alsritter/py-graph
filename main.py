@@ -8,7 +8,7 @@ import internal.utils
 import time
 import gc
 
-from server import BinaryEventTypes
+from server import BinaryEventTypes, PyGraphServer
 
 
 def runner_worker(queue: execution_queue.RunnerQueue, server):
@@ -21,7 +21,8 @@ def runner_worker(queue: execution_queue.RunnerQueue, server):
         queue.task_done(item_id, e.outputs_ui)
         if server.client_id is not None:
             server.send_sync(
-                "executing", {"node": None, "runner_id": runner_id}, server.client_id
+                "executing", {"node": None,
+                              "runner_id": runner_id}, server.client_id
             )
 
         print(
@@ -34,9 +35,14 @@ def runner_worker(queue: execution_queue.RunnerQueue, server):
         gc.collect()
 
 
+async def run(server: PyGraphServer, address='', port=8188, verbose=True, call_on_start=None):
+    await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
+
+
 def hijack_progress(server):
     def hook(value, total, preview_image):
-        server.send_sync("progress", {"value": value, "max": total}, server.client_id)
+        server.send_sync(
+            "progress", {"value": value, "max": total}, server.client_id)
         if preview_image is not None:
             server.send_sync(
                 BinaryEventTypes.UNENCODED_PREVIEW_IMAGE,
@@ -65,5 +71,5 @@ if __name__ == "__main__":
         ),
     ).start()
 
-    loop.run_until_complete(server.start("127.0.0.1", 5000))
+    loop.run_until_complete(run(server, "127.0.0.1", 5000))
     loop.run_forever()
