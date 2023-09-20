@@ -123,7 +123,24 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app: ComfyApp) {
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
-    const nodeTypePrototype = nodeType.prototype
+    const nodeTypePrototype = nodeType.prototype as LGraphNode
+
+    const origOnAdded = nodeTypePrototype.onAdded
+    const newOnAdded = function (graph: LGraph) {
+      const r = origOnAdded ? origOnAdded.apply(this, arguments) : undefined
+
+      console.log('onAdded', this)
+      if (this.widgets) {
+        for (const w of this.widgets) {
+          if (w.config?.options?.defaultInput) {
+            console.log('convertToInput', w)
+            // convertToInput(this, w, w.config)
+          }
+        }
+      }
+
+      return r
+    }
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
@@ -184,6 +201,8 @@ app.registerExtension({
       const r = origOnConfigure
         ? origOnConfigure.apply(this, arguments)
         : undefined
+
+      console.log('onConfigure', this)
       if (this.inputs) {
         for (const input of this.inputs) {
           if (input.widget) {
@@ -258,10 +277,12 @@ app.registerExtension({
       return r
     }
 
+    nodeType.prototype.onAdded = newOnAdded
     nodeType.prototype.onConfigure = newOnConfigure
     nodeType.prototype.onInputDblClick = newOnInputDblClick
     nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions
   },
+
   registerCustomNodes() {
     class PrimitiveNode extends LGraphNode {
       static category: 'utils'

@@ -1082,7 +1082,7 @@ export declare global {
     ): boolean
 
     /**
-     * 如果是存前端的 Node 可以添加这个回调
+     * 如果是纯前端的 Node 可以添加这个回调
      * @param event
      * @returns
      */

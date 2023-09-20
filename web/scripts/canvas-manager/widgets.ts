@@ -300,7 +300,7 @@ export const ComfyWidgets = {
     const defaultInput = !!inputData[1].default_input
     let { val, config } = getNumberDefaults(inputData, 0.5)
     if (defaultInput) {
-      config = { ...config }
+      config = Object.assign(config, { defaultInput })
     }
     return {
       widget: node.addWidget(widgetType, inputName, val, () => {}, config)
