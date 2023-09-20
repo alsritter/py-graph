@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from internal.nodes.chatgpt.nodes import ChatGPTNode
 import internal.utils
 import time
 
@@ -165,6 +166,22 @@ class OutputToStdoutNode(BaseNode):
         return ()
 
 
+class OutputTextToStdoutNode(BaseNode):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"value": ("STRING", {"default_input": True})}}
+
+    RETURN_TYPES = ()
+    RETURN_NAMES = ()
+    DESCRIPTION = "输出到控制台"
+    FUNCTION = "execute"
+    CATEGORY = "Output"
+    OUTPUT_NODE = True
+
+    def execute(self, value):
+        print("OutPut: ", value)
+        return ()
+
 # ==================== MAPPINGS ====================
 
 
@@ -176,6 +193,8 @@ NODE_CLASS_MAPPINGS: dict[str, BaseNode] = {
     "Text": TextInputNode,
     "FLOATValue": ValueInputNode,
     "OutputToStdout": OutputToStdoutNode,
+    "OutputTextToStdout": OutputTextToStdoutNode,
+    "ChatGPT": ChatGPTNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -186,4 +205,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Text": "Text (Multiline line)",
     "FLOATValue": "FLOAT Value",
     "OutputToStdout": "Output to Stdout",
+    "OutputTextToStdout": "Output Text to Stdout",
+    "ChatGPT": "ChatGPT",
 }
