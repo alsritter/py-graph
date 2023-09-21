@@ -9,7 +9,7 @@ class ChatGPTNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {}),
+                "text": ("STRING", {"forceInput": True,}),
             }
         }
 

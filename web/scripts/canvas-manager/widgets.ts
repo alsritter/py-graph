@@ -293,15 +293,13 @@ function isSlider(display: string, app: ComfyCenter) {
 
 /**
  * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
+ * 参考官方的文档：
+ * https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#node-widgets
  */
 export const ComfyWidgets = {
   FLOAT(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     let widgetType = isSlider(inputData[1]['display'], app) as widgetTypes
-    const defaultInput = !!inputData[1].default_input
     let { val, config } = getNumberDefaults(inputData, 0.5)
-    if (defaultInput) {
-      config = Object.assign(config, { defaultInput })
-    }
     return {
       widget: node.addWidget(widgetType, inputName, val, () => {}, config)
     }
@@ -332,6 +330,9 @@ export const ComfyWidgets = {
       })
     }
   },
+  /**
+   * 字符串类型
+   */
   STRING(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     const defaultVal = inputData[1].default || ''
     const multiline = !!inputData[1].multiline
@@ -355,6 +356,9 @@ export const ComfyWidgets = {
 
     return res
   },
+  /**
+   * 枚举类型
+   */
   COMBO(node, inputName, inputData, app: ComfyCenter) {
     const type = inputData[0]
     let defaultValue = type[0]
@@ -363,7 +367,7 @@ export const ComfyWidgets = {
     }
     return {
       widget: node.addWidget('combo', inputName, defaultValue, () => {}, {
-        values: type
+        values: type // e.g. ["red","green","blue"] or  { "title1":value1, "title2":value2 }
       })
     }
   },

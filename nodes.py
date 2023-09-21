@@ -38,8 +38,8 @@ class AddNode(BaseNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "operand1": ("FLOAT", {"default_input": True}),
-                "operand2": ("FLOAT", {"default_input": True}),
+                "operand1": ("FLOAT", {"forceInput": True, }),
+                "operand2": ("FLOAT", {"forceInput": True, }),
             }
         }
 
@@ -49,7 +49,6 @@ class AddNode(BaseNode):
     CATEGORY = "Math"
 
     def execute(self, operand1: float, operand2: float):
-        print("AddNode.execute", operand1, operand2)
         return (operand1 + operand2,)
 
 
@@ -58,8 +57,8 @@ class SubtractNode(BaseNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "minuend": ("FLOAT", {"default_input": True}),
-                "subtrahend": ("FLOAT", {"default_input": True}),
+                "minuend": ("FLOAT", {"forceInput": True,}),
+                "subtrahend": ("FLOAT", {"forceInput": True,}),
             }
         }
 
@@ -77,8 +76,8 @@ class MultiplyNode(BaseNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "factor1": ("FLOAT", {"default_input": True}),
-                "factor2": ("FLOAT", {"default_input": True}),
+                "factor1": ("FLOAT", {"forceInput": True,}),
+                "factor2": ("FLOAT", {"forceInput": True,}),
             }
         }
 
@@ -96,8 +95,8 @@ class DivideNode(BaseNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "dividend": ("FLOAT", {"default_input": True}),
-                "divisor": ("FLOAT", {"default_input": True}),
+                "dividend": ("FLOAT", {"forceInput": True,}),
+                "divisor": ("FLOAT", {"forceInput": True,}),
             }
         }
 
@@ -147,7 +146,7 @@ class ValueInputNode(BaseNode):
 class OutputToStdoutNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"value": ("FLOAT", {"default_input": True})}}
+        return {"required": {"value": ("FLOAT", {"forceInput": True,})}}
 
     RETURN_TYPES = ()
     RETURN_NAMES = ()
@@ -169,7 +168,7 @@ class OutputToStdoutNode(BaseNode):
 class OutputTextToStdoutNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"value": ("STRING", {"default_input": True})}}
+        return {"required": {"value": ("STRING", {"forceInput": True,})}}
 
     RETURN_TYPES = ()
     RETURN_NAMES = ()

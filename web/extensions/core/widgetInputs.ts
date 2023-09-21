@@ -125,23 +125,6 @@ app.registerExtension({
     // web/lib/litegraph.core.js#L2404
     const nodeTypePrototype = nodeType.prototype as LGraphNode
 
-    const origOnAdded = nodeTypePrototype.onAdded
-    const newOnAdded = function (graph: LGraph) {
-      const r = origOnAdded ? origOnAdded.apply(this, arguments) : undefined
-
-      console.log('onAdded', this)
-      if (this.widgets) {
-        for (const w of this.widgets) {
-          if (w.config?.options?.defaultInput) {
-            console.log('convertToInput', w)
-            // convertToInput(this, w, w.config)
-          }
-        }
-      }
-
-      return r
-    }
-
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
     const newGetExtraMenuOptions = function (_, options) {
@@ -170,9 +153,6 @@ app.registerExtension({
             // 否则这里的 w.type 会是原来的类型（number 之类的...）
             const config = nodeData?.input?.required?.[w.name] ||
               nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}]
-
-            console.log('convertToInput', w)
-            // 这里的 config 其实就是字段的类型定义 [ "FLOAT", { "default_input": true } ]
 
             // 检查输入的类型是否可以转换成小部件
             if (isConvertableWidget(w, config)) {
@@ -277,7 +257,6 @@ app.registerExtension({
       return r
     }
 
-    nodeType.prototype.onAdded = newOnAdded
     nodeType.prototype.onConfigure = newOnConfigure
     nodeType.prototype.onInputDblClick = newOnInputDblClick
     nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions
