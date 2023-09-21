@@ -1,7 +1,7 @@
 import {
   ComfyWidgets,
   addValueControlWidget
-} from '../../scripts/canvas-manager/widgets.js'
+} from '../../scripts/node-manager/widgets.js'
 import { app } from '../../scripts/app.js'
 import type { ComfyApp } from '../../scripts/app.js'
 const CONVERTED_TYPE = 'converted-widget'
@@ -23,8 +23,11 @@ function hideWidget(node: LGraphNode, widget: IWidget, suffix = '') {
   widget.origComputeSize = widget.computeSize
   widget.origSerializeValue = widget.serializeValue
 
-  // 设置小部件属性以隐藏它
-  widget.computeSize = () => [0, -4] // -4 是由于 litegraph 自动添加的小部件之间的间隙
+  widget.computeSize = () => [0, -4]
+
+  // 这里是通过修改 widget.type 来隐藏小部件的
+  // widget 的 type 只能为以下定义的类型，否则它会被隐藏：
+  // https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#node-widgets
   // @ts-ignore
   widget.type = CONVERTED_TYPE + suffix
   widget.serializeValue = () => {
@@ -124,6 +127,25 @@ app.registerExtension({
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
     const nodeTypePrototype = nodeType.prototype as LGraphNode
+    const origOnAdd = nodeTypePrototype.onAdded
+    const newOnAdd = function () {
+      const r = origOnAdd ? origOnAdd.apply(this, arguments) : undefined
+
+      if (this.widgets) {
+        for (const w of this.widgets) {
+          if (w?.options?.defaultInput) {
+            const config = nodeData?.input?.required?.[w.name] ||
+              nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}]
+            // convertToInput(this, w, config)
+            hideWidget(this, w)
+            const { linkType } = getWidgetType(config)
+            this.addInput(w.name, linkType)
+          }
+        }
+      }
+
+      return r
+    }
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
@@ -133,21 +155,18 @@ app.registerExtension({
         : undefined
 
       if (this.widgets) {
-        type option = {
-          content: string
-          callback: () => void
-        }
-
-        const toInput: option[] = []
-        const toWidget: option[] = []
+        const toInput: IContextMenuOptions[] = []
+        const toWidget: IContextMenuOptions[] = []
 
         for (const w of this.widgets) {
           // 正常情况下，点击把小部件转成输入后，这里的 w.type 会变成 converted-widget
           if (w.type === CONVERTED_TYPE) {
-            console.log('convertToWidget', w)
             toWidget.push({
               content: `Convert ${w.name} to widget`,
-              callback: () => convertToWidget(this, w)
+              callback: () => {
+                this.flags[`widget_${w.name}`] = true
+                convertToWidget(this, w)
+              }
             })
           } else {
             // 否则这里的 w.type 会是原来的类型（number 之类的...）
@@ -158,7 +177,10 @@ app.registerExtension({
             if (isConvertableWidget(w, config)) {
               toInput.push({
                 content: `Convert ${w.name} to input`,
-                callback: () => convertToInput(this, w, config)
+                callback: () => {
+                  this.flags[`widget_${w.name}`] = false
+                  convertToInput(this, w, config)
+                }
               })
             }
           }
@@ -182,7 +204,15 @@ app.registerExtension({
         ? origOnConfigure.apply(this, arguments)
         : undefined
 
-      console.log('onConfigure', this)
+      // 创建一个空数组，用于存储所有以'widget_'开头的属性值
+      const flags = this.flags
+      const widgetValues = []
+      for (const key in flags) {
+        if (key.startsWith('widget_')) {
+          widgetValues.push(flags[key])
+        }
+      }
+
       if (this.inputs) {
         for (const input of this.inputs) {
           if (input.widget) {
@@ -194,6 +224,14 @@ app.registerExtension({
             } else {
               // 否则将该输入转换为小部件
               convertToWidget(this, input)
+              // if (
+              //   widgetValues[input.name] !== undefined &&
+              //   !widgetValues[input.name] &&
+              //   input?.config?.defaultInput
+              // ) {
+              // } else {
+
+              // }
             }
           }
         }
@@ -257,6 +295,7 @@ app.registerExtension({
       return r
     }
 
+    nodeType.prototype.onAdded = newOnAdd
     nodeType.prototype.onConfigure = newOnConfigure
     nodeType.prototype.onInputDblClick = newOnInputDblClick
     nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions

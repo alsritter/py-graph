@@ -9,7 +9,11 @@ function getNumberDefaults(inputData, defaultStep) {
   if (max == undefined) max = 2048
   if (step == undefined) step = defaultStep
 
-  return { val: defaultVal, config: { min, max, step: 10.0 * step } }
+  inputData[1].min = min
+  inputData[1].max = max
+  inputData[1].step = 10.0 * step
+
+  return { val: defaultVal, config: { ...inputData[1] } }
 }
 
 /**

@@ -21,6 +21,8 @@ export class ComfyApp {
 
   /**
    * Set up the app on the page
+   * 具体的 Node 配置参考官方文档
+   * https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#litegraph
    */
   async setup() {
     const eventManager = new EventManager()

@@ -1,5 +1,5 @@
 import { app } from '../../scripts/app.js'
-import { ComfyWidgets } from '../../scripts/canvas-manager/widgets.js'
+import { ComfyWidgets } from '../../scripts/node-manager/widgets.js'
 // Node that add notes to your project
 
 app.registerExtension({

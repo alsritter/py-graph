@@ -168,7 +168,7 @@ export declare global {
     event?: LMouseEvent | CustomEvent
     parentMenu?: ContextMenu
     autoopen?: boolean
-    title?: string
+    content?: string
     extra?: any
   }
 
