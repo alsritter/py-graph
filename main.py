@@ -5,6 +5,7 @@ import execution
 import execution_queue
 import threading
 import internal.utils
+from nodes import init_custom_nodes
 import time
 import gc
 
@@ -54,6 +55,8 @@ def hijack_progress(server):
 
 
 if __name__ == "__main__":
+    init_custom_nodes()
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     server = server.PyGraphServer(loop)

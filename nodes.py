@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
-from internal.nodes.chatgpt.nodes import ChatGPTNode
 import internal.utils
 import time
+import os
+import sys
+import importlib
+import traceback
+import folder_paths
 
 
 class BaseNode(ABC):
@@ -183,7 +187,7 @@ class OutputTextToStdoutNode(BaseNode):
 
 # ==================== MAPPINGS ====================
 
-
+# Node 类名映射
 NODE_CLASS_MAPPINGS: dict[str, BaseNode] = {
     "Add": AddNode,
     "Subtract": SubtractNode,
@@ -193,9 +197,9 @@ NODE_CLASS_MAPPINGS: dict[str, BaseNode] = {
     "FLOATValue": ValueInputNode,
     "OutputToStdout": OutputToStdoutNode,
     "OutputTextToStdout": OutputTextToStdoutNode,
-    "ChatGPT": ChatGPTNode,
 }
 
+# Node 显示名称
 NODE_DISPLAY_NAME_MAPPINGS = {
     "Add": "Add",
     "Subtract": "Subtract",
@@ -205,5 +209,82 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FLOATValue": "FLOAT Value",
     "OutputToStdout": "Output to Stdout",
     "OutputTextToStdout": "Output Text to Stdout",
-    "ChatGPT": "ChatGPT",
 }
+
+EXTENSION_WEB_DIRS = {}
+
+
+# ==================== LOAD CUSTOM NODES ====================
+def init_custom_nodes():
+    # load_custom_node(os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "custom_nodes/chatgpt"), "nodes.py"))
+    load_custom_node()
+
+
+def load_custom_node(module_path, ignore=set()):
+    module_name = os.path.basename(module_path)
+    if os.path.isfile(module_path):
+        sp = os.path.splitext(module_path)
+        module_name = sp[0]
+    try:
+        if os.path.isfile(module_path):
+            module_spec = importlib.util.spec_from_file_location(
+                module_name, module_path)
+            module_dir = os.path.split(module_path)[0]
+        else:
+            module_spec = importlib.util.spec_from_file_location(
+                module_name, os.path.join(module_path, "__init__.py"))
+            module_dir = module_path
+
+        module = importlib.util.module_from_spec(module_spec)
+        sys.modules[module_name] = module
+        module_spec.loader.exec_module(module)
+
+        if hasattr(module, "WEB_DIRECTORY") and getattr(module, "WEB_DIRECTORY") is not None:
+            web_dir = os.path.abspath(os.path.join(
+                module_dir, getattr(module, "WEB_DIRECTORY")))
+            if os.path.isdir(web_dir):
+                EXTENSION_WEB_DIRS[module_name] = web_dir
+
+        if hasattr(module, "NODE_CLASS_MAPPINGS") and getattr(module, "NODE_CLASS_MAPPINGS") is not None:
+            for name in module.NODE_CLASS_MAPPINGS:
+                if name not in ignore:
+                    NODE_CLASS_MAPPINGS[name] = module.NODE_CLASS_MAPPINGS[name]
+            if hasattr(module, "NODE_DISPLAY_NAME_MAPPINGS") and getattr(module, "NODE_DISPLAY_NAME_MAPPINGS") is not None:
+                NODE_DISPLAY_NAME_MAPPINGS.update(
+                    module.NODE_DISPLAY_NAME_MAPPINGS)
+            return True
+        else:
+            print(
+                f"Skip {module_path} module for custom nodes due to the lack of NODE_CLASS_MAPPINGS.")
+            return False
+    except Exception as e:
+        print(traceback.format_exc())
+        print(f"Cannot import {module_path} module for custom nodes:", e)
+        return False
+
+def load_custom_nodes():
+    base_node_names = set(NODE_CLASS_MAPPINGS.keys())
+    node_paths = folder_paths.get_folder_paths("custom_nodes")
+    node_import_times = []
+    for custom_node_path in node_paths:
+        possible_modules = os.listdir(custom_node_path)
+        if "__pycache__" in possible_modules:
+            possible_modules.remove("__pycache__")
+
+        for possible_module in possible_modules:
+            module_path = os.path.join(custom_node_path, possible_module)
+            if os.path.isfile(module_path) and os.path.splitext(module_path)[1] != ".py": continue
+            if module_path.endswith(".disabled"): continue
+            time_before = time.perf_counter()
+            success = load_custom_node(module_path, base_node_names)
+            node_import_times.append((time.perf_counter() - time_before, module_path, success))
+
+    if len(node_import_times) > 0:
+        print("\nImport times for custom nodes:")
+        for n in sorted(node_import_times):
+            if n[2]:
+                import_message = ""
+            else:
+                import_message = " (IMPORT FAILED)"
+            print("{:6.1f} seconds{}:".format(n[0], import_message), n[1])
+        print()
