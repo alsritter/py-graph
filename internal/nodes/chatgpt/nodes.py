@@ -9,7 +9,8 @@ class ChatGPTNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {"forceInput": True,}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "text": ("STRING", {"forceInput": True, }),
             }
         }
 
@@ -19,12 +20,17 @@ class ChatGPTNode:
     DESCRIPTION = "Generates text using ChatGPT"
     CATEGORY = "tools"
 
-    def execute(self, text: str):
+    def execute(self, seed, text: str):
         # 调用 ChatGPT 3.5-turbo 模型
         res = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": text}],
         )
 
-        generated_text = res["choices"][0]["message"]["content"].strip()
-        return (generated_text,)
+        # 检查响应是否存在
+        if "choices" in res and len(res["choices"]) > 0:
+            generated_text = res["choices"][0]["message"]["content"].strip()
+            return (generated_text,)
+        else:
+            # 处理响应不存在的情况，例如返回一个默认值或引发异常
+            return ("No response from the model",)

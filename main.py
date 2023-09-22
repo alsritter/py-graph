@@ -54,7 +54,8 @@ def hijack_progress(server):
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     server = server.PyGraphServer(loop)
     queue = execution_queue.RunnerQueue(server)
     server.add_routes()

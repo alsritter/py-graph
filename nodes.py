@@ -38,15 +38,15 @@ class AddNode(BaseNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "operand1": ("FLOAT", {"defaultInput": True, }),
-                "operand2": ("FLOAT", {"defaultInput": True, }),
+                "operand1": ("FLOAT", {"forceInput": True, }),
+                "operand2": ("FLOAT", {"forceInput": True, }),
             }
         }
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
     DESCRIPTION = "Adds two numbers together"
-    CATEGORY = "Math"
+    CATEGORY = "base/Math"
 
     def execute(self, operand1: float, operand2: float):
         return (operand1 + operand2,)
@@ -65,7 +65,7 @@ class SubtractNode(BaseNode):
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "subtract"
     DESCRIPTION = "Subtracts two numbers"
-    CATEGORY = "Math"
+    CATEGORY = "base/Math"
 
     def subtract(self, minuend, subtrahend):
         return (minuend - subtrahend,)
@@ -84,7 +84,7 @@ class MultiplyNode(BaseNode):
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
     DESCRIPTION = "Multiplies two numbers"
-    CATEGORY = "Math"
+    CATEGORY = "base/Math"
 
     def execute(self, factor1, factor2):
         return (factor1 * factor2,)
@@ -103,7 +103,7 @@ class DivideNode(BaseNode):
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "execute"
     DESCRIPTION = "Divides two numbers"
-    CATEGORY = "Math"
+    CATEGORY = "base/Math"
 
     def execute(self, dividend, divisor):
         if divisor != 0:
@@ -121,7 +121,7 @@ class TextInputNode(BaseNode):
     RETURN_NAMES = ("text",)
     FUNCTION = "execute"
     DESCRIPTION = "Text input"
-    CATEGORY = "Input"
+    CATEGORY = "base"
 
     def execute(self, text):
         return (text,)
@@ -136,7 +136,7 @@ class ValueInputNode(BaseNode):
     RETURN_NAMES = ("value",)
     DESCRIPTION = "Value input"
     FUNCTION = "execute"
-    CATEGORY = "Input"
+    CATEGORY = "base"
 
     def execute(self, value):
         time.sleep(3)
@@ -152,7 +152,7 @@ class OutputToStdoutNode(BaseNode):
     RETURN_NAMES = ()
     DESCRIPTION = "输出到控制台"
     FUNCTION = "execute"
-    CATEGORY = "Output"
+    CATEGORY = "base"
     OUTPUT_NODE = True
 
     def execute(self, value):
@@ -174,7 +174,7 @@ class OutputTextToStdoutNode(BaseNode):
     RETURN_NAMES = ()
     DESCRIPTION = "输出到控制台"
     FUNCTION = "execute"
-    CATEGORY = "Output"
+    CATEGORY = "base"
     OUTPUT_NODE = True
 
     def execute(self, value):

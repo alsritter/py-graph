@@ -17,14 +17,14 @@ function getNumberDefaults(inputData, defaultStep) {
 }
 
 /**
- * 添加值控制小部件到节点上。
+ * 添加种子值控制 Widget 到节点上。
  * @param node 目标节点。
- * @param targetWidget 目标小部件，需要受控制的小部件。
+ * @param targetWidget 目标 Widget，需要受控制的 Widget。
  * @param defaultValue 默认值，控制模式的初始设置。可选值包括 "fixed", "increment", "decrement", "randomize"。
  * @param values 控制模式的可选值。默认为 ["fixed", "increment", "decrement", "randomize"]。
- * @returns 返回创建的值控制小部件。
+ * @returns 返回创建的值控制Widget。
  */
-export function addValueControlWidget(
+export function addValueSeedControlWidget(
   node: LGraphNode,
   targetWidget: IWidget,
   defaultValue = 'randomize'
@@ -109,10 +109,10 @@ const MultilineSymbol = Symbol()
 const MultilineResizeSymbol = Symbol()
 
 /**
- * 在 LiteGraph 节点上添加多行小部件，自动计算布局和尺寸。
- * @param node - 要添加小部件的 LiteGraph 节点对象。
- * @param name - 小部件的名称。
- * @param opts - 小部件的选项。
+ * 在 LiteGraph 节点上添加多行 Widget，自动计算布局和尺寸。
+ * @param node - 要添加 Widget 的 LiteGraph 节点对象。
+ * @param name - Widget的名称。
+ * @param opts - Widget的选项。
  * @param opts.defaultVal - 默认值
  * @param opts.placeholder - 占位符
  * @param app - 应用程序的上下文。
@@ -295,12 +295,21 @@ function isSlider(display: string, app: ComfyCenter) {
   return display === 'slider' ? 'slider' : 'number'
 }
 
+function seedWidget(node, inputName, inputData, app) {
+	const seed = ComfyWidgets.INT(node, inputName, inputData, app);
+	const seedControl = addValueSeedControlWidget(node, seed.widget, "randomize");
+
+	seed.widget.linkedWidgets = [seedControl];
+	return seed;
+}
+
 /**
- * ComfyWidgets 是一个包含不同类型小部件生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互小部件。
+ * ComfyWidgets 是一个包含不同类型Widget生成函数的对象，用于在 LiteGraph 节点上添加各种类型的交互Widget。
  * 参考官方的文档：
  * https://github.com/jagenjo/litegraph.js/blob/master/guides/README.md#node-widgets
  */
 export const ComfyWidgets = {
+  "INT:seed": seedWidget,
   FLOAT(node: LGraphNode, inputName, inputData, app: ComfyCenter) {
     let widgetType = isSlider(inputData[1]['display'], app) as widgetTypes
     let { val, config } = getNumberDefaults(inputData, 0.5)

@@ -1,6 +1,6 @@
 import {
   ComfyWidgets,
-  addValueControlWidget
+  addValueSeedControlWidget
 } from '../../scripts/node-manager/widgets.js'
 import { app } from '../../scripts/app.js'
 import type { ComfyApp } from '../../scripts/app.js'
@@ -46,6 +46,8 @@ function hideWidget(node: LGraphNode, widget: IWidget, suffix = '') {
 
   // 隐藏任何链接的小部件
   if (widget.linkedWidgets) {
+
+    // Hide any linked widgets, e.g. seed+seedControl
     for (const w of widget.linkedWidgets) {
       hideWidget(node, w, ':' + widget.name)
     }
@@ -61,7 +63,7 @@ function showWidget(widget) {
   delete widget.origComputeSize
   delete widget.origSerializeValue
 
-  // Hide any linked widgets
+  // Hide any linked widgets, e.g. seed+seedControl
   if (widget.linkedWidgets) {
     for (const w of widget.linkedWidgets) {
       showWidget(w)
@@ -127,25 +129,6 @@ app.registerExtension({
     // nodeType 的这些函数可以在 litegraph.core 里找到
     // web/lib/litegraph.core.js#L2404
     const nodeTypePrototype = nodeType.prototype as LGraphNode
-    const origOnAdd = nodeTypePrototype.onAdded
-    const newOnAdd = function () {
-      const r = origOnAdd ? origOnAdd.apply(this, arguments) : undefined
-
-      if (this.widgets) {
-        for (const w of this.widgets) {
-          if (w?.options?.defaultInput) {
-            const config = nodeData?.input?.required?.[w.name] ||
-              nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}]
-            // convertToInput(this, w, config)
-            hideWidget(this, w)
-            const { linkType } = getWidgetType(config)
-            this.addInput(w.name, linkType)
-          }
-        }
-      }
-
-      return r
-    }
 
     // 这个 getExtraMenuOptions 会在 Node 上面右键触发
     const origGetExtraMenuOptions = nodeTypePrototype.getExtraMenuOptions
@@ -164,7 +147,6 @@ app.registerExtension({
             toWidget.push({
               content: `Convert ${w.name} to widget`,
               callback: () => {
-                this.flags[`widget_${w.name}`] = true
                 convertToWidget(this, w)
               }
             })
@@ -178,7 +160,6 @@ app.registerExtension({
               toInput.push({
                 content: `Convert ${w.name} to input`,
                 callback: () => {
-                  this.flags[`widget_${w.name}`] = false
                   convertToInput(this, w, config)
                 }
               })
@@ -204,15 +185,6 @@ app.registerExtension({
         ? origOnConfigure.apply(this, arguments)
         : undefined
 
-      // 创建一个空数组，用于存储所有以'widget_'开头的属性值
-      const flags = this.flags
-      const widgetValues = []
-      for (const key in flags) {
-        if (key.startsWith('widget_')) {
-          widgetValues.push(flags[key])
-        }
-      }
-
       if (this.inputs) {
         for (const input of this.inputs) {
           if (input.widget) {
@@ -224,14 +196,6 @@ app.registerExtension({
             } else {
               // 否则将该输入转换为小部件
               convertToWidget(this, input)
-              // if (
-              //   widgetValues[input.name] !== undefined &&
-              //   !widgetValues[input.name] &&
-              //   input?.config?.defaultInput
-              // ) {
-              // } else {
-
-              // }
             }
           }
         }
@@ -295,7 +259,6 @@ app.registerExtension({
       return r
     }
 
-    nodeType.prototype.onAdded = newOnAdd
     nodeType.prototype.onConfigure = newOnConfigure
     nodeType.prototype.onInputDblClick = newOnInputDblClick
     nodeType.prototype.getExtraMenuOptions = newGetExtraMenuOptions
@@ -449,7 +412,7 @@ app.registerExtension({
 
         if (widget.type === 'number' || widget.type === 'combo') {
           // @ts-ignore
-          addValueControlWidget(this, widget, 'fixed')
+          addValueSeedControlWidget(this, widget, 'fixed')
         }
 
         // When our value changes, update other widgets to reflect our changes

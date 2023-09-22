@@ -139,6 +139,14 @@ export class WorkflowManager implements Module {
         // If you break something in the backend and want to patch workflows in the frontend
         // This is the place to do this
         for (let widget of node.widgets) {
+          if (widget.name == 'control_after_generate') {
+            if (widget.value === true) {
+              widget.value = 'randomize'
+            } else if (widget.value === false) {
+              widget.value = 'fixed'
+            }
+          }
+
           if (reset_invalid_values) {
             if (widget.type == 'combo') {
               if (
