@@ -8,7 +8,10 @@ const CONVERTED_TYPE = 'converted-widget'
 const VALID_TYPES = ['STRING', 'combo', 'number', 'BOOLEAN']
 
 function isConvertableWidget(widget, config) {
-  return VALID_TYPES.includes(widget.type) || VALID_TYPES.includes(config[0])
+  return (
+    (VALID_TYPES.includes(widget.type) || VALID_TYPES.includes(config[0])) &&
+    widget.name !== 'control_after_generate'
+  )
 }
 
 /**
@@ -46,7 +49,6 @@ function hideWidget(node: LGraphNode, widget: IWidget, suffix = '') {
 
   // 隐藏任何链接的小部件
   if (widget.linkedWidgets) {
-
     // Hide any linked widgets, e.g. seed+seedControl
     for (const w of widget.linkedWidgets) {
       hideWidget(node, w, ':' + widget.name)

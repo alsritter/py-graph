@@ -217,7 +217,7 @@ EXTENSION_WEB_DIRS = {}
 # ==================== LOAD CUSTOM NODES ====================
 def init_custom_nodes():
     # load_custom_node(os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "custom_nodes/chatgpt"), "nodes.py"))
-    load_custom_node()
+    load_custom_nodes()
 
 
 def load_custom_node(module_path, ignore=set()):

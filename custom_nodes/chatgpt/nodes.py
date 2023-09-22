@@ -9,8 +9,13 @@ class ChatGPTNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "text": ("STRING", {"forceInput": True, }),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+                "text": (
+                    "STRING",
+                    {
+                        "forceInput": True,
+                    },
+                ),
             }
         }
 
@@ -34,7 +39,3 @@ class ChatGPTNode:
         else:
             # 处理响应不存在的情况，例如返回一个默认值或引发异常
             return ("No response from the model",)
-
-NODE_CLASS_MAPPINGS = {
-    "ChatGPTNode": ChatGPTNode,
-}
