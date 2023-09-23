@@ -11,6 +11,11 @@ export class NodeManager implements Module {
   nodePreviewImages: Record<string, string[]> = {}
 
   /**
+   * Stores preview text for nodes
+   */
+  nodePreviewText: Record<string, string[]> = {}
+
+  /**
    * The node that is currently being dragged over
    */
   dragOverNode: LGraphNode
@@ -171,28 +176,6 @@ export class NodeManager implements Module {
   #addDrawBackgroundHandler(node) {
     const self = this
 
-    function getImageTop(node: LGraphNode) {
-      let shiftY: number
-      if (node.imageOffset != null) {
-        shiftY = node.imageOffset
-      } else {
-        if (node.widgets?.length) {
-          const w = node.widgets[node.widgets.length - 1]
-          shiftY = w.last_y
-          if (w.computeSize) {
-            shiftY += w.computeSize()[1] + 4
-          } else if (w.computedHeight) {
-            shiftY += w.computedHeight
-          } else {
-            shiftY += LiteGraph.NODE_WIDGET_HEIGHT + 4
-          }
-        } else {
-          shiftY = node.computeSize()[1]
-        }
-      }
-      return shiftY
-    }
-
     /**
      * 根据图片大小，设置节点的宽高
      */
@@ -215,20 +198,33 @@ export class NodeManager implements Module {
         let imgURLs = []
         let imagesChanged = false
 
+        let texts = []
+        let textsChanged = false
+
         const output = self.stateHandler.nodeOutputs[this.id + '']
-        if (output && output.images) {
-          if (this.images !== output.images) {
-            this.images = output.images
-            imagesChanged = true
-            imgURLs = imgURLs.concat(
-              output.images.map((params) => {
-                return api.apiURL(
-                  '/view?' +
-                    new URLSearchParams(params).toString() +
-                    self.canvasManager.getPreviewFormatParam()
-                )
-              })
-            )
+        if (output) {
+          if (output.images) {
+            if (this.images !== output.images) {
+              this.images = output.images
+              imagesChanged = true
+              imgURLs = imgURLs.concat(
+                output.images.map((params) => {
+                  return api.apiURL(
+                    '/view?' +
+                      new URLSearchParams(params).toString() +
+                      self.canvasManager.getPreviewFormatParam()
+                  )
+                })
+              )
+            }
+          }
+
+          if (output.texts) {
+            if (this.texts !== output.texts) {
+              this.texts = output.texts
+              textsChanged = true
+              texts = texts.concat(output.texts)
+            }
           }
         }
 
@@ -238,6 +234,15 @@ export class NodeManager implements Module {
           imagesChanged = true
           if (preview != null) {
             imgURLs.push(preview)
+          }
+        }
+
+        const textPreview = self.nodePreviewText?.[this.id + '']
+        if (this.textPreview !== textPreview) {
+          this.textPreview = textPreview
+          textsChanged = true
+          if (textPreview != null) {
+            texts.push(textPreview)
           }
         }
 
@@ -268,171 +273,237 @@ export class NodeManager implements Module {
           }
         }
 
-        if (this.imgs && this.imgs.length) {
-          const canvas = this.graph.list_of_graphcanvas[0]
-          const mouse = canvas.graph_mouse
-          if (!canvas.pointer_is_down && this.pointerDown) {
-            if (
-              mouse[0] === this.pointerDown.pos[0] &&
-              mouse[1] === this.pointerDown.pos[1]
-            ) {
-              this.imageIndex = this.pointerDown.index
-            }
-            this.pointerDown = null
+        if (textsChanged) {
+          this.textIndex = null
+          if (texts.length > 0) {
+            this.texts = texts
+          } else {
+            this.texts = null
           }
+        }
 
-          let w = this.imgs[0].naturalWidth
-          let h = this.imgs[0].naturalHeight
-          let imageIndex = this.imageIndex
-          const numImages = this.imgs.length
-          if (numImages === 1 && !imageIndex) {
-            this.imageIndex = imageIndex = 0
+        self.drawImages(this, ctx)
+        self.drawTexts(this, ctx, this.texts)
+      }
+    }
+  }
+
+  drawImages(node: LGraphNode, ctx: CanvasRenderingContext2D) {
+    if (node.imgs && node.imgs.length) {
+      const canvas = node.graph.list_of_graphcanvas[0]
+      const mouse = canvas.graph_mouse
+      if (!canvas.pointer_is_down && node.pointerDown) {
+        if (
+          mouse[0] === node.pointerDown.pos[0] &&
+          mouse[1] === node.pointerDown.pos[1]
+        ) {
+          node.imageIndex = node.pointerDown.index
+        }
+        node.pointerDown = null
+      }
+
+      let w = node.imgs[0].naturalWidth
+      let h = node.imgs[0].naturalHeight
+      let imageIndex = node.imageIndex
+      const numImages = node.imgs.length
+      if (numImages === 1 && !imageIndex) {
+        node.imageIndex = imageIndex = 0
+      }
+
+      const shiftY = getImageTop(node)
+
+      let dw = node.size[0]
+      let dh = node.size[1]
+      dh -= shiftY
+
+      if (imageIndex == null) {
+        let best = 0
+        let cellWidth
+        let cellHeight
+        let cols = 0
+        let shiftX = 0
+        for (let c = 1; c <= numImages; c++) {
+          const rows = Math.ceil(numImages / c)
+          const cW = dw / c
+          const cH = dh / rows
+          const scaleX = cW / w
+          const scaleY = cH / h
+
+          const scale = Math.min(scaleX, scaleY, 1)
+          const imageW = w * scale
+          const imageH = h * scale
+          const area = imageW * imageH * numImages
+
+          if (area > best) {
+            best = area
+            cellWidth = imageW
+            cellHeight = imageH
+            cols = c
+            shiftX = c * ((cW - imageW) / 2)
           }
+        }
 
-          const shiftY = getImageTop(this)
-
-          let dw = this.size[0]
-          let dh = this.size[1]
-          dh -= shiftY
-
-          if (imageIndex == null) {
-            let best = 0
-            let cellWidth
-            let cellHeight
-            let cols = 0
-            let shiftX = 0
-            for (let c = 1; c <= numImages; c++) {
-              const rows = Math.ceil(numImages / c)
-              const cW = dw / c
-              const cH = dh / rows
-              const scaleX = cW / w
-              const scaleY = cH / h
-
-              const scale = Math.min(scaleX, scaleY, 1)
-              const imageW = w * scale
-              const imageH = h * scale
-              const area = imageW * imageH * numImages
-
-              if (area > best) {
-                best = area
-                cellWidth = imageW
-                cellHeight = imageH
-                cols = c
-                shiftX = c * ((cW - imageW) / 2)
-              }
-            }
-
-            let anyHovered = false
-            this.imageRects = []
-            for (let i = 0; i < numImages; i++) {
-              const img = this.imgs[i]
-              const row = Math.floor(i / cols)
-              const col = i % cols
-              const x = col * cellWidth + shiftX
-              const y = row * cellHeight + shiftY
-              if (!anyHovered) {
-                anyHovered = LiteGraph.isInsideRectangle(
-                  mouse[0],
-                  mouse[1],
-                  x + this.pos[0],
-                  y + this.pos[1],
-                  cellWidth,
-                  cellHeight
-                )
-                if (anyHovered) {
-                  this.overIndex = i
-                  let value = 110
-                  if (canvas.pointer_is_down) {
-                    if (!this.pointerDown || this.pointerDown.index !== i) {
-                      this.pointerDown = { index: i, pos: [...mouse] }
-                    }
-                    value = 125
-                  }
-                  ctx.filter = `contrast(${value}%) brightness(${value}%)`
-                  canvas.canvas.style.cursor = 'pointer'
+        let anyHovered = false
+        node.imageRects = []
+        for (let i = 0; i < numImages; i++) {
+          const img = node.imgs[i]
+          const row = Math.floor(i / cols)
+          const col = i % cols
+          const x = col * cellWidth + shiftX
+          const y = row * cellHeight + shiftY
+          if (!anyHovered) {
+            anyHovered = LiteGraph.isInsideRectangle(
+              mouse[0],
+              mouse[1],
+              x + node.pos[0],
+              y + node.pos[1],
+              cellWidth,
+              cellHeight
+            )
+            if (anyHovered) {
+              node.overIndex = i
+              let value = 110
+              if (canvas.pointer_is_down) {
+                if (!node.pointerDown || node.pointerDown.index !== i) {
+                  node.pointerDown = { index: i, pos: [...mouse] }
                 }
+                value = 125
               }
-              this.imageRects.push([x, y, cellWidth, cellHeight])
-              ctx.drawImage(img, x, y, cellWidth, cellHeight)
-              ctx.filter = 'none'
+              ctx.filter = `contrast(${value}%) brightness(${value}%)`
+              canvas.canvas.style.cursor = 'pointer'
             }
+          }
+          node.imageRects.push([x, y, cellWidth, cellHeight])
+          ctx.drawImage(img, x, y, cellWidth, cellHeight)
+          ctx.filter = 'none'
+        }
 
-            if (!anyHovered) {
-              this.pointerDown = null
-              this.overIndex = null
+        if (!anyHovered) {
+          node.pointerDown = null
+          node.overIndex = null
+        }
+      } else {
+        // Draw individual
+        const scaleX = dw / w
+        const scaleY = dh / h
+        const scale = Math.min(scaleX, scaleY, 1)
+
+        w *= scale
+        h *= scale
+
+        let x = (dw - w) / 2
+        let y = (dh - h) / 2 + shiftY
+        ctx.drawImage(node.imgs[imageIndex], x, y, w, h)
+
+        const drawButton = (x: number, y: number, sz: number, text: string) => {
+          const hovered = LiteGraph.isInsideRectangle(
+            mouse[0],
+            mouse[1],
+            x + node.pos[0],
+            y + node.pos[1],
+            sz,
+            sz
+          )
+          let fill = '#333'
+          let textFill = '#fff'
+          let isClicking = false
+          if (hovered) {
+            canvas.canvas.style.cursor = 'pointer'
+            if (canvas.pointer_is_down) {
+              fill = '#1e90ff'
+              isClicking = true
+            } else {
+              fill = '#eee'
+              textFill = '#000'
             }
           } else {
-            // Draw individual
-            const scaleX = dw / w
-            const scaleY = dh / h
-            const scale = Math.min(scaleX, scaleY, 1)
+            node.pointerWasDown = null
+          }
 
-            w *= scale
-            h *= scale
+          ctx.fillStyle = fill
+          ctx.beginPath()
+          ctx.roundRect(x, y, sz, sz, [4])
+          ctx.fill()
+          ctx.fillStyle = textFill
+          ctx.font = '12px Arial'
+          ctx.textAlign = 'center'
+          ctx.fillText(text, x + 15, y + 20)
 
-            let x = (dw - w) / 2
-            let y = (dh - h) / 2 + shiftY
-            ctx.drawImage(this.imgs[imageIndex], x, y, w, h)
+          return isClicking
+        }
 
-            const drawButton = (x, y, sz, text) => {
-              const hovered = LiteGraph.isInsideRectangle(
-                mouse[0],
-                mouse[1],
-                x + this.pos[0],
-                y + this.pos[1],
-                sz,
-                sz
-              )
-              let fill = '#333'
-              let textFill = '#fff'
-              let isClicking = false
-              if (hovered) {
-                canvas.canvas.style.cursor = 'pointer'
-                if (canvas.pointer_is_down) {
-                  fill = '#1e90ff'
-                  isClicking = true
-                } else {
-                  fill = '#eee'
-                  textFill = '#000'
-                }
-              } else {
-                this.pointerWasDown = null
-              }
-
-              ctx.fillStyle = fill
-              ctx.beginPath()
-              ctx.roundRect(x, y, sz, sz, [4])
-              ctx.fill()
-              ctx.fillStyle = textFill
-              ctx.font = '12px Arial'
-              ctx.textAlign = 'center'
-              ctx.fillText(text, x + 15, y + 20)
-
-              return isClicking
+        if (numImages > 1) {
+          if (
+            drawButton(
+              x + w - 35,
+              y + h - 35,
+              30,
+              `${node.imageIndex + 1}/${numImages}`
+            )
+          ) {
+            let i = node.imageIndex + 1 >= numImages ? 0 : node.imageIndex + 1
+            //@ts-ignore
+            if (!node.pointerDown || !node.pointerDown.index === i) {
+              node.pointerDown = { index: i, pos: [...mouse] }
             }
+          }
 
-            if (numImages > 1) {
-              if (
-                drawButton(
-                  x + w - 35,
-                  y + h - 35,
-                  30,
-                  `${this.imageIndex + 1}/${numImages}`
-                )
-              ) {
-                let i =
-                  this.imageIndex + 1 >= numImages ? 0 : this.imageIndex + 1
-                if (!this.pointerDown || !this.pointerDown.index === i) {
-                  this.pointerDown = { index: i, pos: [...mouse] }
-                }
-              }
-
-              if (drawButton(x + w - 35, y + 5, 30, `x`)) {
-                if (!this.pointerDown || !this.pointerDown.index === null) {
-                  this.pointerDown = { index: null, pos: [...mouse] }
-                }
-              }
+          if (drawButton(x + w - 35, y + 5, 30, 'x')) {
+            if (!node.pointerDown || !node.pointerDown.index === null) {
+              node.pointerDown = { index: null, pos: [...mouse] }
             }
+          }
+        }
+      }
+    }
+  }
+
+  drawTexts(node: LGraphNode, ctx: CanvasRenderingContext2D, texts: string[]) {
+    if (texts && texts.length) {
+      const canvas = node.graph.list_of_graphcanvas[0]
+      const mouse = canvas.graph_mouse
+
+      // Customize text drawing settings here
+      ctx.font = '14px Arial'
+      ctx.fillStyle = '#000'
+      ctx.textAlign = 'center'
+
+      // Calculate the line height based on font size
+      const lineHeight = 20 // You can adjust this value
+
+      // Calculate the vertical position for the first line of text
+      const startY =
+        node.pos[1] + node.size[1] / 2 - ((texts.length - 1) * lineHeight) / 2
+
+      // Draw each line of text
+      for (let i = 0; i < texts.length; i++) {
+        const text = texts[i]
+        const y = startY + i * lineHeight
+
+        // Draw the text
+        ctx.fillText(text, node.pos[0] + node.size[0] / 2, y)
+
+        // Check for mouse interactions (optional)
+        const hovered = LiteGraph.isInsideRectangle(
+          mouse[0],
+          mouse[1],
+          node.pos[0],
+          y - lineHeight / 2, // Adjust the Y position for the current line
+          node.size[0],
+          lineHeight // Use lineHeight as the height for the interaction area
+        )
+
+        if (hovered) {
+          canvas.canvas.style.cursor = 'pointer'
+
+          // Add any mouse interaction logic here
+          if (canvas.pointer_is_down) {
+            // Handle mouse click or interaction
+            // You can use `text` to identify the clicked text, if needed
+            const clickedText = text
+            // Implement your copy-to-clipboard logic here, similar to the previous example
+            copyToClipboard(clickedText)
+            console.log('文本已复制到剪贴板:', clickedText)
           }
         }
       }
@@ -727,4 +798,39 @@ export class NodeManager implements Module {
         node.widgets.findIndex((obj) => obj.name === 'image') >= 0)
     )
   }
+}
+
+function getImageTop(node: LGraphNode) {
+  let shiftY: number
+  if (node.imageOffset != null) {
+    shiftY = node.imageOffset
+  } else {
+    if (node.widgets?.length) {
+      const w = node.widgets[node.widgets.length - 1]
+      shiftY = w.last_y
+      if (w.computeSize) {
+        shiftY += w.computeSize()[1] + 4
+      } else if (w.computedHeight) {
+        shiftY += w.computedHeight
+      } else {
+        shiftY += LiteGraph.NODE_WIDGET_HEIGHT + 4
+      }
+    } else {
+      shiftY = node.computeSize()[1]
+    }
+  }
+  return shiftY
+}
+
+function copyToClipboard(text: string) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  document.body.appendChild(textarea)
+
+  // 选择并复制文本
+  textarea.select()
+  document.execCommand('copy')
+
+  // 清除临时元素
+  document.body.removeChild(textarea)
 }

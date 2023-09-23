@@ -191,6 +191,14 @@ export class StateHandler implements Module {
       this.nodeManager.nodePreviewImages[id] = [blobUrl]
     })
 
+    api.addEventListener('b_preview_txt', ({ detail }) => {
+      const id = this.runningNodeId
+      if (id == null) return
+
+      const text = detail as string
+      this.nodeManager.nodePreviewText[id] = [text]
+    })
+
     api.init()
   }
 

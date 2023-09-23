@@ -685,6 +685,11 @@ export declare global {
     mouseOver: boolean
     widgets: IWidget[]
 
+    pointerDown: any
+    pointerWasDown: any
+    imageRects: any[]
+    overIndex: number
+
     id: number
 
     _shape: number
@@ -1305,6 +1310,8 @@ export declare global {
     default_connection_color_byType: {
       [type: string]: string
     }
+
+    pointer_is_down: boolean
 
     bgcanvas: HTMLCanvasElement
     bgctx: CanvasRenderingContext2D
