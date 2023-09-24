@@ -515,14 +515,14 @@ export class ComfyList {
                 // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
                 const removeAction = item.remove || {
                   name: 'Delete',
-                  cb: () => api.deleteItem(this.#type, item.prompt[1])
+                  cb: () => api.deleteItem(this.#type, item.runner[1])
                 }
-                return $el('div', { textContent: item.prompt[0] + ': ' }, [
+                return $el('div', { textContent: item.runner[0] + ': ' }, [
                   $el('button', {
                     textContent: 'Load',
                     onclick: () => {
                       this.app.workflowManager.loadGraphData(
-                        item.prompt[3].extra_pnginfo.workflow
+                        item.runner[3].extra_pnginfo.workflow
                       )
                       if (item.outputs) {
                         this.app.stateHandler.nodeOutputs = item.outputs
