@@ -17,8 +17,8 @@ import execution_queue
 
 
 class BinaryEventTypes:
-    PREVIEW_TEXT = 1
-    UNENCODED_PREVIEW_IMAGE = 2
+    UNENCODED_PREVIEW_IMAGE = 1
+    PREVIEW_TEXT = 2
 
 
 async def send_socket_catch_exception(function, message):

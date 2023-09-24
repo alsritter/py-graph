@@ -458,55 +458,64 @@ export class NodeManager implements Module {
     }
   }
 
-  drawTexts(node: LGraphNode, ctx: CanvasRenderingContext2D, texts: string[]) {
+  drawTexts(
+    node: LGraphNode,
+    ctx: CanvasRenderingContext2D,
+    texts: string[][]
+  ) {
     if (texts && texts.length) {
       const canvas = node.graph.list_of_graphcanvas[0]
-      const mouse = canvas.graph_mouse
+      const dw = node.size[0]
+      const dh = node.size[1]
 
-      // Customize text drawing settings here
-      ctx.font = '14px Arial'
-      ctx.fillStyle = '#000'
+      // Calculate the initial font size (you can adjust this as needed)
+      const fontSize = 12
+      ctx.font = `${fontSize}px Arial`
+
+      // Calculate the line height based on the font size
+      const lineHeight = fontSize * 1.2
+
+      // Calculate the maximum available width and height for text
+      const maxTextWidth = dw - 20 // Adjust the padding as needed
+
+      // Clear the background with white color
+      ctx.fillStyle = '#ffffff' // White background color
+      ctx.fillRect(0, 2 * lineHeight, dw, dh - 2 * lineHeight)
       ctx.textAlign = 'center'
+      ctx.fillStyle = '#000000' // Text color (black)
 
-      // Calculate the line height based on font size
-      const lineHeight = 20 // You can adjust this value
+      let y = 3 * lineHeight // Initialize the y-coordinate for the first line
 
-      // Calculate the vertical position for the first line of text
-      const startY =
-        node.pos[1] + node.size[1] / 2 - ((texts.length - 1) * lineHeight) / 2
+      for (const textArray of texts) {
+        for (const text of textArray) {
+          let currentLine = ''
+          const words = text.split('')
 
-      // Draw each line of text
-      for (let i = 0; i < texts.length; i++) {
-        const text = texts[i]
-        const y = startY + i * lineHeight
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine}${word}` : word
+            const testLineWidth = ctx.measureText(testLine).width
 
-        // Draw the text
-        ctx.fillText(text, node.pos[0] + node.size[0] / 2, y)
-
-        // Check for mouse interactions (optional)
-        const hovered = LiteGraph.isInsideRectangle(
-          mouse[0],
-          mouse[1],
-          node.pos[0],
-          y - lineHeight / 2, // Adjust the Y position for the current line
-          node.size[0],
-          lineHeight // Use lineHeight as the height for the interaction area
-        )
-
-        if (hovered) {
-          canvas.canvas.style.cursor = 'pointer'
-
-          // Add any mouse interaction logic here
-          if (canvas.pointer_is_down) {
-            // Handle mouse click or interaction
-            // You can use `text` to identify the clicked text, if needed
-            const clickedText = text
-            // Implement your copy-to-clipboard logic here, similar to the previous example
-            copyToClipboard(clickedText)
-            console.log('文本已复制到剪贴板:', clickedText)
+            if (testLineWidth <= maxTextWidth) {
+              currentLine = testLine
+            } else {
+              // Draw the current line and reset for the next line
+              ctx.fillText(currentLine, dw / 2, y)
+              y += lineHeight
+              currentLine = word
+            }
           }
+
+          // Draw the remaining line
+          ctx.fillText(currentLine, dw / 2, y)
+          y += lineHeight
         }
+
+        // Add some space between different text groups
+        y += lineHeight
       }
+
+      // Update the node height based on the total text height
+      node.size[1] = y + lineHeight // Adjust the padding as needed
     }
   }
 

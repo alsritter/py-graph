@@ -9,6 +9,12 @@ def set_progress_bar_global_hook(function):
     PROGRESS_BAR_HOOK = function
 
 
+class PreviewType:
+    def __init__(self, type, data):
+        self.type = type
+        self.data = data
+
+
 class ProgressBar:
     def __init__(self, total: int):
         global PROGRESS_BAR_HOOK
