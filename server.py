@@ -18,7 +18,6 @@ import execution_queue
 
 class BinaryEventTypes:
     UNENCODED_PREVIEW_IMAGE = 1
-    PREVIEW_TEXT = 2
 
 
 async def send_socket_catch_exception(function, message):
@@ -280,9 +279,7 @@ class PyGraphServer:
             await self.send_image(data, sid=sid)
         # isinstance() 是 Python 内置函数之一，用于检查一个对象是否是指定类或其子类的实例
         # isinstance(data, (bytes, bytearray)) 检查 data 是否为 bytes 或 bytearray 类型
-        if event == BinaryEventTypes.PREVIEW_TEXT:
-            await self.send_bytes(event, data.encode("utf-8"), sid)
-        elif isinstance(data, (bytes, bytearray)):
+        if isinstance(data, (bytes, bytearray)):
             await self.send_bytes(event, data, sid)
         else:
             await self.send_json(event, data, sid)

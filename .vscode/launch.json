@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
       {
-          "name": "Python: Debug",
+          "name": "服务启动",
           "type": "python",
           "request": "launch",
           "program": "${workspaceFolder}/main.py",
@@ -11,6 +11,17 @@
           "env": {},
           "args": [],
           "envFile": "${workspaceFolder}/.env",
-      }
+      },
+      {
+        "name": "测试导出 Python 代码",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/graphui_to_python.py",
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}",
+        "env": {},
+        "args": [],
+        "envFile": "${workspaceFolder}/.env",
+    }
   ]
 }

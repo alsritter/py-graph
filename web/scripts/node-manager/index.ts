@@ -11,11 +11,6 @@ export class NodeManager implements Module {
   nodePreviewImages: Record<string, string[]> = {}
 
   /**
-   * Stores preview text for nodes
-   */
-  nodePreviewText: Record<string, string[]> = {}
-
-  /**
    * The node that is currently being dragged over
    */
   dragOverNode: LGraphNode
@@ -198,9 +193,6 @@ export class NodeManager implements Module {
         let imgURLs = []
         let imagesChanged = false
 
-        let texts = []
-        let textsChanged = false
-
         const output = self.stateHandler.nodeOutputs[this.id + '']
         if (output) {
           if (output.images) {
@@ -218,14 +210,6 @@ export class NodeManager implements Module {
               )
             }
           }
-
-          if (output.texts) {
-            if (this.texts !== output.texts) {
-              this.texts = output.texts
-              textsChanged = true
-              texts = texts.concat(output.texts)
-            }
-          }
         }
 
         const preview = self.nodePreviewImages?.[this.id + '']
@@ -234,15 +218,6 @@ export class NodeManager implements Module {
           imagesChanged = true
           if (preview != null) {
             imgURLs.push(preview)
-          }
-        }
-
-        const textPreview = self.nodePreviewText?.[this.id + '']
-        if (this.textPreview !== textPreview) {
-          this.textPreview = textPreview
-          textsChanged = true
-          if (textPreview != null) {
-            texts.push(textPreview)
           }
         }
 
@@ -273,17 +248,7 @@ export class NodeManager implements Module {
           }
         }
 
-        if (textsChanged) {
-          this.textIndex = null
-          if (texts.length > 0) {
-            this.texts = texts
-          } else {
-            this.texts = null
-          }
-        }
-
         self.drawImages(this, ctx)
-        self.drawTexts(this, ctx, this.texts)
       }
     }
   }
@@ -455,67 +420,6 @@ export class NodeManager implements Module {
           }
         }
       }
-    }
-  }
-
-  drawTexts(
-    node: LGraphNode,
-    ctx: CanvasRenderingContext2D,
-    texts: string[][]
-  ) {
-    if (texts && texts.length) {
-      const canvas = node.graph.list_of_graphcanvas[0]
-      const dw = node.size[0]
-      const dh = node.size[1]
-
-      // Calculate the initial font size (you can adjust this as needed)
-      const fontSize = 12
-      ctx.font = `${fontSize}px Arial`
-
-      // Calculate the line height based on the font size
-      const lineHeight = fontSize * 1.2
-
-      // Calculate the maximum available width and height for text
-      const maxTextWidth = dw - 20 // Adjust the padding as needed
-
-      // Clear the background with white color
-      ctx.fillStyle = '#ffffff' // White background color
-      ctx.fillRect(0, 2 * lineHeight, dw, dh - 2 * lineHeight)
-      ctx.textAlign = 'center'
-      ctx.fillStyle = '#000000' // Text color (black)
-
-      let y = 3 * lineHeight // Initialize the y-coordinate for the first line
-
-      for (const textArray of texts) {
-        for (const text of textArray) {
-          let currentLine = ''
-          const words = text.split('')
-
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine}${word}` : word
-            const testLineWidth = ctx.measureText(testLine).width
-
-            if (testLineWidth <= maxTextWidth) {
-              currentLine = testLine
-            } else {
-              // Draw the current line and reset for the next line
-              ctx.fillText(currentLine, dw / 2, y)
-              y += lineHeight
-              currentLine = word
-            }
-          }
-
-          // Draw the remaining line
-          ctx.fillText(currentLine, dw / 2, y)
-          y += lineHeight
-        }
-
-        // Add some space between different text groups
-        y += lineHeight
-      }
-
-      // Update the node height based on the total text height
-      node.size[1] = y + lineHeight // Adjust the padding as needed
     }
   }
 

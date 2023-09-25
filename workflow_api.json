@@ -1,0 +1,17 @@
+{
+  "89": {
+    "inputs": {
+      "text": "中秋节快乐cc"
+    },
+    "class_type": "Text"
+  },
+  "92": {
+    "inputs": {
+      "text": [
+        "89",
+        0
+      ]
+    },
+    "class_type": "ShowText_specialtag"
+  }
+}

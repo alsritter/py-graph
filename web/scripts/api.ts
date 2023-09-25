@@ -101,10 +101,6 @@ class ComfyApi extends EventTarget {
                 new CustomEvent('b_preview', { detail: imageBlob })
               )
               break
-            case 2:
-              const text = new TextDecoder().decode(buffer)
-              this.dispatchEvent(new CustomEvent('b_preview_txt', { detail: text }))
-              break
             default:
               throw new Error(
                 `Unknown binary websocket message of type ${eventType}`

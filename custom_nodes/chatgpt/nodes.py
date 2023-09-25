@@ -23,7 +23,7 @@ class ChatGPTNode:
     RETURN_NAMES = ("text",)
     FUNCTION = "execute"
     DESCRIPTION = "Generates text using ChatGPT"
-    CATEGORY = "tools"
+    CATEGORY = "chatgpt"
 
     def execute(self, seed, text: str):
         # 调用 ChatGPT 3.5-turbo 模型

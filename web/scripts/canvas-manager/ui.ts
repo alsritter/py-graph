@@ -268,6 +268,17 @@ export class ComfyUI {
       })
     ])
 
+    const devMode = this.settings.addSetting({
+      id: 'Comfy.DevMode',
+      name: 'Enable Dev mode Options',
+      type: 'boolean',
+      defaultValue: false,
+      onChange: function (value) {
+        document.getElementById('comfy-dev-save-api-button').style.display =
+          value ? 'block' : 'none'
+      }
+    })
+
     this.dragElement(this.menuContainer, this.settings)
 
     this.setStatus({ exec_info: { queue_remaining: 'X' } })

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import internal.utils
 import time
+import re
 import os
 import sys
 import importlib
@@ -171,6 +172,54 @@ class TextInputNode(BaseNode):
         return (text,)
 
 
+class StringFunction:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "action": (["append", "replace"], {}),
+                "tidy_tags": (["yes", "no"], {}),
+                "text_a": ("STRING", {"multiline": True}),
+                "text_b": ("STRING", {"multiline": True}),
+            },
+            "optional": {
+                "text_c": ("STRING", {"multiline": True})
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "exec"
+    CATEGORY = "base"
+    OUTPUT_NODE = True
+
+    def exec(self, action, tidy_tags, text_a, text_b, text_c=""):
+        # Converted inputs are sent as the string of 'undefined' if not connected
+        if text_a == "undefined":
+            text_a = ""
+        if text_b == "undefined":
+            text_b = ""
+        if text_c == "undefined":
+            text_c = ""
+
+        tidy_tags = tidy_tags == "yes"
+        out = ""
+        if action == "append":
+            out = (", " if tidy_tags else "").join(
+                filter(None, [text_a, text_b, text_c]))
+        else:
+            if text_c is None:
+                text_c = ""
+            if text_b.startswith("/") and text_b.endswith("/"):
+                regex = text_b[1:-1]
+                out = re.sub(regex, text_c, text_a)
+            else:
+                out = text_a.replace(text_b, text_c)
+        if tidy_tags:
+            out = out.replace("  ", " ").replace(
+                " ,", ",").replace(",,", ",").replace(",,", ",")
+        return {"ui": {"text": (out,)}, "result": (out,)}
+
+
 class ValueInputNode(BaseNode):
     @classmethod
     def INPUT_TYPES(cls):
@@ -185,6 +234,37 @@ class ValueInputNode(BaseNode):
     def execute(self, value):
         time.sleep(3)
         return (value,)
+
+
+class ShowText:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "text": ("STRING", {"forceInput": True}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    INPUT_IS_LIST = True
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "notify"
+    OUTPUT_NODE = True
+    OUTPUT_IS_LIST = (True,)
+
+    CATEGORY = "base"
+
+    def notify(self, text, unique_id=None, extra_pnginfo=None):
+        if unique_id and extra_pnginfo and "workflow" in extra_pnginfo[0]:
+            workflow = extra_pnginfo[0]["workflow"]
+            node = next((x for x in workflow["nodes"] if str(
+                x["id"]) == unique_id[0]), None)
+            if node:
+                node["widgets_values"] = [text]
+        return {"ui": {"text": text}, "result": (text,)}
 
 
 class OutputToStdoutNode(BaseNode):
@@ -215,33 +295,6 @@ class OutputToStdoutNode(BaseNode):
             pbar.update_absolute(x, 10)
 
         print("OutPut: ", value)
-        return ()
-
-
-class OutputTextToWebNode(BaseNode):
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "value": (
-                    "STRING",
-                    {
-                        "forceInput": True,
-                    },
-                )
-            }
-        }
-
-    RETURN_TYPES = ()
-    RETURN_NAMES = ()
-    DESCRIPTION = "输出到窗口"
-    FUNCTION = "execute"
-    CATEGORY = "base"
-    OUTPUT_NODE = True
-
-    def execute(self, value):
-        pbar = internal.utils.ProgressBar(1)
-        pbar.update_absolute(1, 1, internal.utils.PreviewType("text", value))
         return ()
 
 
@@ -283,7 +336,8 @@ NODE_CLASS_MAPPINGS: dict[str, BaseNode] = {
     "FLOATValue": ValueInputNode,
     "OutputToStdout": OutputToStdoutNode,
     "OutputTextToStdout": OutputTextToStdoutNode,
-    "OutputTextToWeb": OutputTextToWebNode,
+    "ShowText_specialtag": ShowText,
+    "StringFunction": StringFunction,
 }
 
 # Node 显示名称
@@ -296,7 +350,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FLOATValue": "FLOAT Value",
     "OutputToStdout": "Output to Stdout",
     "OutputTextToStdout": "Output Text to Stdout",
-    "OutputTextToWeb": "Output Text to Web",
+    "ShowText_specialtag": "Show Text",
+    "StringFunction": "String Handler Function"
 }
 
 EXTENSION_WEB_DIRS = {}
