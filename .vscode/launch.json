@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+    {"name":"Python: Current File","type":"python","request":"launch","program":"${file}","console":"integratedTerminal","justMyCode":true},
       {
           "name": "服务启动",
           "type": "python",
@@ -11,17 +12,6 @@
           "env": {},
           "args": [],
           "envFile": "${workspaceFolder}/.env",
-      },
-      {
-        "name": "测试导出 Python 代码",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/graphui_to_python.py",
-        "console": "integratedTerminal",
-        "cwd": "${workspaceFolder}",
-        "env": {},
-        "args": [],
-        "envFile": "${workspaceFolder}/.env",
-    }
+      }
   ]
 }
